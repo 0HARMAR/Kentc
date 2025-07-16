@@ -5,6 +5,9 @@
 #ifndef IRGENERATOR_H
 #define IRGENERATOR_H
 #include "../../include/json.hpp"
+#include <map>
+#include <set>
+
 using json = nlohmann::json;
 
 class IRGenerator {

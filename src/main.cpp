@@ -5,6 +5,7 @@
 
 #include "LexerAnalyze/Lexer.hpp"
 #include "SyntaxAnalyze/Parser.h"
+#include "IRGenerate/IRGenerator.h"
 #include <windows.h>
 int main()
 {
@@ -17,6 +18,8 @@ int main()
     buffer << src.rdbuf();
     std::string src_str = buffer.str();
 
+	// lexer analyze
+	std::cout << "\033[31mLexer analyze:\033[0m\n";
     Lexer lexer(src_str);
 
     std::vector<Token> tokens = lexer.tokenize();
@@ -28,10 +31,19 @@ int main()
                   << ", Type: " << lexer.tokenTypeToString(token.type) << '\n';
     }
 
+	// parser analyze
+	std::cout << "\033[32mParser analyze:\033[0m\n";
 
 	Parser parser(tokens);
     const auto ast = parser.parse();
 	json ast_json = parser.astToJson(ast.get());
 	std::cout << ast_json.dump(2) << std::endl;
+
+	// IR generate
+	std::cout << "\033[33mIR generate:\033[0m\n";
+	IRGenerator irGenerator;
+	std::string IR;
+	irGenerator.generateIR(ast_json,IR);
+	std::cout << IR << std::endl;
     return 0;
 }
