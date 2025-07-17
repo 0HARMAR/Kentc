@@ -1,0 +1,66 @@
+//
+// Created by hemin on 25-7-16.
+//
+
+#ifndef TARGETGENERATOR_H
+#define TARGETGENERATOR_H
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <sstream>
+#include <vector>
+#include <cctype>
+
+using namespace std;
+struct Variable
+{
+	string name;
+	string type;
+	int stackOffset;
+};
+
+struct Instruction
+{
+	string op;
+	vector<string> operands;
+	string result;
+};
+
+class TargetGenerator
+{
+public:
+	void addAsmLine(const string& line);
+	string createTempVar();
+	void processAlloca(const vector<string>& tokens);
+	void processStore(const vector<string>& tokens);
+	string processLoad(const vector<string>& tokens);
+	string processBinaryOp(const vector<string>& tokens);
+	void processCall(const vector<string>& tokens);
+	vector<string> convertIRToASM(const vector<string>& irLines);
+
+private:
+	// program state
+	vector<string> asmLines;
+	map<string, Variable> variables;
+	int stackSize = 0;
+	int maxStackOffset = 0;
+	int nextTempVar = 0;
+
+	// var map
+	map<string, int> variableMap = {
+		{"i32", 4},
+	};
+
+	// operator map
+	map<string, string> opMap = {
+		{"add", "addl"},
+		{"sub", "subl"},
+		{"mul", "imull"},
+		{"sdiv", "idivl"},
+	};
+
+	// assist func
+	string trim(const string& str);
+};
+
+#endif //TARGETGENERATOR_H

@@ -11,4 +11,6 @@ add_executable(kentc src/main.cpp
         include/TokenType.h
         src/SyntaxAnalyze/AstToJson.cpp
         src/IRgenerate/IRGenerator.cpp
-        src/IRgenerate/IRGenerator.h)
+        src/IRgenerate/IRGenerator.h
+        src/TargetGenerator/TargetGenerator.cpp
+        src/TargetGenerator/TargetGenerator.h)
