@@ -13,4 +13,8 @@ add_executable(kentc src/main.cpp
         src/IRgenerate/IRGenerator.cpp
         src/IRgenerate/IRGenerator.h
         src/TargetGenerator/TargetGenerator.cpp
-        src/TargetGenerator/TargetGenerator.h)
+        src/TargetGenerator/TargetGenerator.h
+        src/TargetGenerator/RegisterAllocator.cpp
+        src/TargetGenerator/RegisterAllocator.h
+        src/StaticProgramAnalysis/StaticProgramAnalyzer.cpp
+        src/StaticProgramAnalysis/StaticProgramAnalyzer.h)

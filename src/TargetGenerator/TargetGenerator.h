@@ -10,7 +10,8 @@
 #include <sstream>
 #include <vector>
 #include <cctype>
-
+#include "RegisterAllocator.h"
+#include "../StaticProgramAnalysis/StaticProgramAnalyzer.h"
 using namespace std;
 struct Variable
 {
@@ -58,6 +59,12 @@ private:
 		{"mul", "imull"},
 		{"sdiv", "idivl"},
 	};
+
+	// register allocator
+	RegisterAllocator registerAllocator;
+
+	// static program analyzer
+	StaticProgramAnalyzer staticProgramAnalyzer;
 
 	// assist func
 	string trim(const string& str);

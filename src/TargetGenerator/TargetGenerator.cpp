@@ -4,6 +4,8 @@
 
 #include "TargetGenerator.h"
 
+#include <complex>
+
 string TargetGenerator::trim(const string& str)
 {
 	size_t first = str.find_first_not_of(' \t');
@@ -44,10 +46,11 @@ void TargetGenerator::processStore(const vector<string>& tokens)
 
 	// analyze : store i32 5, i32* %mem512
 	string value = trim(tokens[0]);
+	value.pop_back();
 	string type = trim(tokens[1]);
 	string destVar = trim(tokens[2]);
 
-	// if prefix no %, it`s a immediate operand
+	// if prefix no %, it`s an immediate operand
 	if (value.find('%') == string::npos)
 	{
 		if (variables.find(destVar) != variables.end())
@@ -57,14 +60,14 @@ void TargetGenerator::processStore(const vector<string>& tokens)
 		}
 	}
 
-	// var assignment
+	// temp var
 	else
 	{
 		if (variables.find(value.substr(1)) != variables.end() &&
 			variables.find(destVar) != variables.end())
 		{
-			addAsmLine("	movl	" + to_string(variables[value.substr(1)].stackOffset) + "(%rbp), %eax");
-			addAsmLine("	movl	%eax, " + to_string(variables[destVar].stackOffset) + "(%rbp)");
+			string varToReg = registerAllocator.getTempVarLocation(value);
+			addAsmLine("	movl	" + varToReg + ", " + to_string(variables[destVar].stackOffset) + "(%rbp)");
 		}
 	}
 }
@@ -75,13 +78,12 @@ string TargetGenerator::processLoad(const vector<string>& tokens)
 
 	// analyze : %t1 = load i32, i32* %mem512
 	string destVar = trim(tokens[0]);
-	string srcVar = trim(tokens[1]);
+	string srcAddr = trim(tokens[1]);
 
-	if (variables.find(srcVar) != variables.end())
+	if (variables.find(srcAddr) != variables.end())
 	{
-		string tempReg = createTempVar();
-		addAsmLine("	movl	" + to_string(variables[srcVar].stackOffset) + "(%rbp), %eax");
-		addAsmLine("	movl	%eax, " + tempReg + "(%rsp)");
+		string varToReg = registerAllocator.allocReg(destVar);
+		addAsmLine("	movl	" + to_string(variables[srcAddr].stackOffset) + "(%rbp)" + ", " + varToReg);
 	}
 	return "";
 }
@@ -97,6 +99,7 @@ string TargetGenerator::processBinaryOp(const vector<string>& tokens)
 
 	// create a temp var to store the result
 	string result = createTempVar();
+	string varToReg = registerAllocator.allocReg(result);
 
 	// process operand
 	string src1,src2;
@@ -105,8 +108,7 @@ string TargetGenerator::processBinaryOp(const vector<string>& tokens)
 		string var = op1.substr(1);
 		if (variables.find(var) != variables.end())
 		{
-			addAsmLine("	movl	" + to_string(variables[var].stackOffset) + "(%rbp), %eax");
-			src1 = "%eax";
+			src1 = registerAllocator.getTempVarLocation(var);
 		}
 	} else
 	{
@@ -118,8 +120,7 @@ string TargetGenerator::processBinaryOp(const vector<string>& tokens)
 		string var = op2.substr(1);
 		if (variables.find(var) != variables.end())
 		{
-			addAsmLine("	movl	" + to_string(variables[var].stackOffset) + "(%rbp), %ecx");
-			src2 = "%ecx";
+			src2 = registerAllocator.getTempVarLocation(var);
 		}
 	} else
 	{
@@ -152,6 +153,7 @@ void TargetGenerator::processCall(const vector<string>& tokens)
 	if (tokens.empty()) return;
 
 	string funcName = tokens[0];
+	funcName.erase(funcName.size()-4);
 
 	if (funcName == "@print_int" || funcName == "@exit")
 	{
@@ -159,9 +161,10 @@ void TargetGenerator::processCall(const vector<string>& tokens)
 		if (tokens.size() > 1)
 		{
 			arg = tokens[1];
+			arg.pop_back();
 
-			// if arg is const
-			if (arg.find('%') == string::npos)
+			// if arg is variable
+			if (arg.find('%') != string::npos)
 			{
 				string var = arg.substr(1);
 				if (variables.find(var) != variables.end())
@@ -197,7 +200,7 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 		string trimmed = trim(line);
 		if (trimmed.empty()) continue;
 
-		// skip decl and matedata
+		// skip decl and metadata
 		if (trimmed.find("declare") == 0 ||
 			trimmed.find("define") == 0 ||
 				trimmed.find("}") == 0)
@@ -216,26 +219,38 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 
 		if (tokens.empty()) continue;
 
-		// alloca instrunction
-		if (tokens[0].find("alloca") != string::npos)
+		// alloca instruction
+		if (tokens[2].find("alloca") != string::npos)
 		{
-			vector<string> args(tokens.begin() + 1, tokens.end());
+			vector<string> args;
+			args.push_back(tokens[0]);
+			args.push_back(tokens[3]);
 			processAlloca(args);
 		}
 		else if (tokens[0] == "store")
 		{
-			vector<string> args(tokens.begin() + 1, tokens.end());
+			vector<string> args;
+			args.push_back(tokens[2]);
+			args.push_back(tokens[1]);
+			args.push_back(tokens[4]);
 			processStore(args);
 		}
-		else if (tokens[0] == "load")
+		else if (tokens[2] == "load")
 		{
-			vector<string> args(tokens.begin() + 1, tokens.end());
+			vector<string> args;
+			args.push_back(tokens[0]);
+			args.push_back(tokens[5]);
 			processLoad(args);
 		}
-		else if (opMap.find(tokens[0]) != opMap.end())
+		else if (opMap.find(tokens[2]) != opMap.end())
 		{
 			string result = *tokens.rbegin();
-			vector<string> args(tokens.begin() + 1, tokens.end());
+			vector<string> args;
+			args.push_back(tokens[0]);
+			args.push_back(tokens[3]);
+			args.push_back(tokens[4]);
+			args.push_back(tokens[5]);
+
 			string tempVar = processBinaryOp(args);
 			if (!tempVar.empty() && result.find("%") != string::npos)
 			{
@@ -249,14 +264,16 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 		}
 		else if (tokens[0] == "call")
 		{
-			vector<string> args(tokens.begin() + 1, tokens.end());
+			vector<string> args;
+			args.push_back(tokens[2]);
+			args.push_back(tokens[3]);
 			processCall(args);
 		}
 	}
 
 	// calculate stack size and add asm suffix
-	int stackAlloc = (maxStackOffset + 15) & ~15;
-	asmLines.insert(asmLines.begin() + 4, "	subq	$" + to_string(stackAlloc) + ", %rsp");
+	int stackAlloc = staticProgramAnalyzer.analyze(irLines);
+	asmLines.insert(asmLines.begin() + 8, "	subq	$" + to_string(stackAlloc) + ", %rsp");
 
 	addAsmLine("	movl	$0, %eax");
 	addAsmLine("	leave");
