@@ -6,6 +6,8 @@
 #define STATICPROGRAMANALYSIS_H
 #include <string>
 #include <vector>
+#include <sstream>
+#include <iostream>
 using namespace std;
 struct MemoryEntry
 {
@@ -21,7 +23,8 @@ struct MemoryEntry
 class StaticProgramAnalyzer {
 public:
 	StaticProgramAnalyzer();
-	void analyze(const string& ir_code);
+	int analyze(const string& ir_code);
+	int entendStackSize();
 
 private:
 	vector<MemoryEntry> memory_map;
@@ -31,7 +34,7 @@ private:
 
 	int getTypeSize(const string& type);
 	void allocateMemory(int id, int size, const string& name);
-	void calculateFinalMemory();
+	int calculateFinalMemory();
 };
 
 

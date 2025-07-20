@@ -38,6 +38,7 @@ public:
 	string processBinaryOp(const vector<string>& tokens);
 	void processCall(const vector<string>& tokens);
 	vector<string> convertIRToASM(const vector<string>& irLines);
+	void handleDivision(const string& dividend, const string& divisor, string& result);
 
 private:
 	// program state

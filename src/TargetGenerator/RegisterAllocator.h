@@ -19,8 +19,8 @@ public:
 	void freeReg(string var, bool lastUse=true);
 	string getTempVarLocation(string operand);
 	void handleCall();
-	void handleDivision(const string& dividend, const string& divisor, string& result);
-
+	string getVarInRegister(string reg);
+	void spillRegister(string var);
 private:
 	vector<string> freeRegs = {"%r8d","r9d", "%r10d", "%r11d", "%r12d", "%r13d", "%r14d", "%r15d"};
 	unordered_map<string, string> varToReg; // variable to register mapping

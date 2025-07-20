@@ -50,7 +50,7 @@ string RegisterAllocator::getTempVarLocation(string operand)
 		if (spilledVars.count(operand)) return to_string(spilledVars[operand]) + "(%rbp)";
 
 	}
-	return operand;
+	return "";
 }
 
 void RegisterAllocator::handleCall()
@@ -82,7 +82,23 @@ void RegisterAllocator::freeReg(string var, bool lastUse)
 	}
 }
 
-void RegisterAllocator::handleDivision(const string& dividend, const string& divisor, string& result)
+string RegisterAllocator::getVarInRegister(string reg)
 {
+	for (const auto& pair : varToReg)
+	{
+		if (pair.second == reg) return pair.first;
+	}
+	return "";
+}
 
+// if var bind a reg, cancel the bind, and alloca a new reg for it
+void RegisterAllocator::spillRegister(string var)
+{
+	if (varToReg.count(var))
+	{
+		string reg = varToReg[var];
+		freeRegs.push_back(reg);
+	}
+
+	allocReg(var);
 }

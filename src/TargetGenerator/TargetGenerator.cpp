@@ -92,14 +92,11 @@ string TargetGenerator::processBinaryOp(const vector<string>& tokens)
 {
 	if (tokens.size() != 4) return "";
 
-	string op = tokens[0];
-	string type = tokens[1];
-	string op1 = tokens[2];
-	string op2 = tokens[3];
-
-	// create a temp var to store the result
-	string result = createTempVar();
-	string varToReg = registerAllocator.allocReg(result);
+	string result = tokens[0];
+	string op = tokens[1];
+	string type = tokens[2];
+	string op1 = tokens[3];
+	string op2 = tokens[4];
 
 	// process operand
 	string src1,src2;
@@ -130,19 +127,14 @@ string TargetGenerator::processBinaryOp(const vector<string>& tokens)
 	// process div
 	if (op == "sdiv")
 	{
-		addAsmLine("	movl	%eax, %edx");
-		addAsmLine("	sarl	$31, %edx");
-		addAsmLine("	idivl	%ecx");
-		addAsmLine("	movl	%eax, " + result + "(%rsp)");
-		return result;
+		handleDivision(op1, op2, result);
 	}
 
 	// process other ops
 	if (opMap.find(op) != opMap.end())
 	{
-		addAsmLine("	" + opMap[op] + "	" + src2 + ", %eax");
-		addAsmLine("	movl	%eax, " + result + "(%rsp)");
-		return result;
+		string resultReg = registerAllocator.allocReg(result);
+		// TODO generate op asm
 	}
 
 	return "";
@@ -247,20 +239,12 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 			string result = *tokens.rbegin();
 			vector<string> args;
 			args.push_back(tokens[0]);
+			args.push_back(tokens[2]);
 			args.push_back(tokens[3]);
 			args.push_back(tokens[4]);
 			args.push_back(tokens[5]);
 
-			string tempVar = processBinaryOp(args);
-			if (!tempVar.empty() && result.find("%") != string::npos)
-			{
-				string destVar = result.substr(1);
-				if (variables.find(destVar) != variables.end())
-				{
-					addAsmLine("	movl	" + tempVar +  "(%rsp), %eax");
-					addAsmLine("	movl	%eax, " + to_string(variables[destVar].stackOffset) + "(%rbp)");
-				}
-			}
+			processBinaryOp(args);
 		}
 		else if (tokens[0] == "call")
 		{
@@ -272,7 +256,13 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 	}
 
 	// calculate stack size and add asm suffix
-	int stackAlloc = staticProgramAnalyzer.analyze(irLines);
+	ostringstream ir_oss;
+	for (size_t i = 0; i < irLines.size(); ++i)
+	{
+		ir_oss << irLines[i] << endl;
+	}
+
+	int stackAlloc = staticProgramAnalyzer.analyze(ir_oss.str());
 	asmLines.insert(asmLines.begin() + 8, "	subq	$" + to_string(stackAlloc) + ", %rsp");
 
 	addAsmLine("	movl	$0, %eax");
