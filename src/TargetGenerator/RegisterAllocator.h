@@ -27,7 +27,6 @@ private:
 	unordered_map<string, int> addrToStack; // address variable to stack offset mapping
 	unordered_map<string, int> spilledVars; // spilled variables to stack offset mapping
 	int stackOffset = -8; // current stack offset
-	const vector<string> callerSaved = {"%eax", "%ecx", "%edx", "%esi", "%edi", "%r8d", "%r9d", "%r10d", "%r11d"};
 };
 
 

@@ -16,8 +16,8 @@ struct MemoryEntry
 	int end_address;
 	string var_name;
 
-	MemoryEntry(int addr, int sz, const string* name)
-		: start_address(addr), size(sz), end_address(addr + sz), var_name(*name) {}
+	MemoryEntry(int addr, int sz, const string& name)
+		: start_address(addr), size(sz), end_address(addr + sz), var_name(name) {}
 };
 
 class StaticProgramAnalyzer {

@@ -16,13 +16,6 @@ void TargetGenerator::handleDivision(const string& dividend, const string& divis
 		registerAllocator.spillRegister(edxUser);
 	}
 
-	// load dividend to %eax
-	string dividendLoc = registerAllocator.getTempVarLocation(dividend);
-	if (dividendLoc != "%eax")
-	{
-		// TODO generate asm code to load dividend to %eax
-	}
-
 	// load divisor to another reg(not %edx）
 	string divisorRegOrNum;
 	if (divisor[0] == '%')
@@ -39,7 +32,11 @@ void TargetGenerator::handleDivision(const string& dividend, const string& divis
 	}
 
 	// generate divide instruction
-	// TODO generate asm code to divide
+	addAsmLine("	cltd"); // sign extend %eax to %edx
+	addAsmLine("	idivl " + divisorRegOrNum);
+
+	string resultReg = registerAllocator.allocReg(result);
+	addAsmLine("	movl %eax, " + resultReg); // move result to result reg
 
 	// free op reg
 	registerAllocator.freeReg(dividend);

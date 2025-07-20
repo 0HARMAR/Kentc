@@ -59,7 +59,6 @@ void TargetGenerator::processStore(const vector<string>& tokens)
 				to_string(variables[destVar].stackOffset) + "(%rbp)");
 		}
 	}
-
 	// temp var
 	else
 	{
@@ -134,7 +133,8 @@ string TargetGenerator::processBinaryOp(const vector<string>& tokens)
 	if (opMap.find(op) != opMap.end())
 	{
 		string resultReg = registerAllocator.allocReg(result);
-		// TODO generate op asm
+		addAsmLine("	movl	" + src1 + ", " + resultReg);
+		addAsmLine("	" + opMap[op] + "	" + src2 + ", " + resultReg);
 	}
 
 	return "";
@@ -158,10 +158,10 @@ void TargetGenerator::processCall(const vector<string>& tokens)
 			// if arg is variable
 			if (arg.find('%') != string::npos)
 			{
-				string var = arg.substr(1);
+				string var = registerAllocator.allocReg(arg.substr(1));
 				if (variables.find(var) != variables.end())
 				{
-					addAsmLine("	movl	" + to_string(variables[var].stackOffset) + "(%rbp), %edi");
+					addAsmLine("	movl	" + var + ", %edi");
 				}
 			}
 			// else an immediate number
@@ -171,7 +171,9 @@ void TargetGenerator::processCall(const vector<string>& tokens)
 			}
 		}
 
+		CallingConvention::addCallerSave();
 		addAsmLine("	call	" + funcName.substr(1));
+		CallingConvention::restoreCallerSave();
 	}
 }
 

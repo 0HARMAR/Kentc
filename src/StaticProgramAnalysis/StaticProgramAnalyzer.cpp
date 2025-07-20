@@ -16,7 +16,7 @@ int StaticProgramAnalyzer::analyze(const string& ir_code)
 	while (getline(stream, line))
 	{
 		smatch match;
-		if (regex_search(line, match, regex(R"%\w+ = alloca (\w+))")))
+		if (regex_search(line, match, regex(R"(%\w+ = alloca (\w+))")))
 		{
 			string type = match[1];
 			int size = getTypeSize(type);

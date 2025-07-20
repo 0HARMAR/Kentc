@@ -18,4 +18,7 @@ add_executable(kentc src/main.cpp
         src/TargetGenerator/RegisterAllocator.h
         src/StaticProgramAnalysis/StaticProgramAnalyzer.cpp
         src/StaticProgramAnalysis/StaticProgramAnalyzer.h
-        src/TargetGenerator/HandleDivision.cpp)
+        src/TargetGenerator/HandleDivision.cpp
+        src/TargetGenerator/CallingConvention.cpp
+        src/TargetGenerator/CallingConvention.h
+)

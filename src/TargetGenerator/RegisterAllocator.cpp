@@ -3,6 +3,7 @@
 //
 
 #include "RegisterAllocator.h"
+#include "CallingConvention.h"
 
 string RegisterAllocator::allocReg(string var)
 {
@@ -34,7 +35,8 @@ string RegisterAllocator::selectSpillCandidate()
 {
 	for (auto& pair : varToReg)
 	{
-		if (find(callerSaved.begin(), callerSaved.end(), pair.second) != callerSaved.end())
+		if (find(CallingConvention::callerSaved.begin(), CallingConvention::callerSaved.end(),
+			pair.second) != CallingConvention::callerSaved.end())
 		{
 			return pair.first;
 		}
@@ -57,7 +59,8 @@ void RegisterAllocator::handleCall()
 {
 	for (auto& pair : varToReg)
 	{
-		if (find(callerSaved.begin(), callerSaved.end(), pair.second) != callerSaved.end())
+		if (find(CallingConvention::callerSaved.begin(), CallingConvention::callerSaved.end(),
+			pair.second) != CallingConvention::callerSaved.end())
 		{
 			// TODO generate asm code to save the register
 
