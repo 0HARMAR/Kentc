@@ -13,6 +13,7 @@ public:
 	static vector<string> calleeSaved;
 	static vector<string> parameters;
 	static string returnReg;
+	static int alignment;
 
 	static vector<string> addCallerSave();
 	static vector<string> restoreCallerSave();

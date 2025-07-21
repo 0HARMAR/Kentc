@@ -33,10 +33,10 @@ void TargetGenerator::handleDivision(const string& dividend, const string& divis
 
 	// generate divide instruction
 	addAsmLine("	cltd"); // sign extend %eax to %edx
-	addAsmLine("	idivl " + divisorRegOrNum);
+	addAsmLine("	idivl	" + divisorRegOrNum);
 
 	string resultReg = registerAllocator.allocReg(result);
-	addAsmLine("	movl %eax, " + resultReg); // move result to result reg
+	addAsmLine("	movl	%eax, " + resultReg); // move result to result reg
 
 	// free op reg
 	registerAllocator.freeReg(dividend);

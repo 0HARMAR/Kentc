@@ -24,7 +24,7 @@ class StaticProgramAnalyzer {
 public:
 	StaticProgramAnalyzer();
 	int analyze(const string& ir_code);
-	int entendStackSize();
+	int extendStackSize();
 
 private:
 	vector<MemoryEntry> memory_map;

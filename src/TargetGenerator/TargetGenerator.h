@@ -32,6 +32,7 @@ class TargetGenerator
 {
 public:
 	void addAsmLine(const string& line);
+	void addAsmLine(const vector<string>& lines);
 	string createTempVar();
 	void processAlloca(const vector<string>& tokens);
 	void processStore(const vector<string>& tokens);

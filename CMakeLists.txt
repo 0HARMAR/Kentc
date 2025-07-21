@@ -21,4 +21,6 @@ add_executable(kentc src/main.cpp
         src/TargetGenerator/HandleDivision.cpp
         src/TargetGenerator/CallingConvention.cpp
         src/TargetGenerator/CallingConvention.h
+        src/CompileOptimise/Instruction.cpp
+        src/CompileOptimise/Instruction.h
 )
