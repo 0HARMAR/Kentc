@@ -71,11 +71,11 @@ struct Operand
 		switch (type)
 		{
 			case OperandType::IMMEDIATE:
-				return "$" + to_string(value);
+				return "$" + std::to_string(value);
 			case OperandType::REGISTER:
 				return "%" + reg;
 			case OperandType::MEMORY:
-				return to_string(displacement)  + "(% " + base_reg + ")";
+				return std::to_string(displacement)  + "(% " + base_reg + ")";
 			case OperandType::LABEL:
 				return label;
 			default:

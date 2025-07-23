@@ -5,6 +5,14 @@
 #include "RegisterAllocator.h"
 #include "CallingConvention.h"
 
+// alloc register for immediate
+string RegisterAllocator::allocReg()
+{
+	string reg = freeRegs.back();
+	freeRegs.pop_back();
+	return reg;
+}
+
 string RegisterAllocator::allocReg(string var)
 {
 	if (!freeRegs.empty())
@@ -94,8 +102,9 @@ string RegisterAllocator::getVarInRegister(string reg)
 	return "";
 }
 
-// if var bind a reg, cancel the bind, and alloca a new reg for it
-void RegisterAllocator::spillRegister(string var)
+// if var bind a reg, cancel the bind, and alloca a new reg for it,
+// return the new reg
+string RegisterAllocator::spillRegister(string var)
 {
 	if (varToReg.count(var))
 	{
@@ -103,5 +112,29 @@ void RegisterAllocator::spillRegister(string var)
 		freeRegs.push_back(reg);
 	}
 
-	allocReg(var);
+	return allocReg(var);
+}
+// binding a var to reg, if var is binding, return old reg
+string RegisterAllocator::allocReg(string var, string reg)
+{
+	if (varToReg.count(var))
+	{
+		string old_reg = getTempVarLocation(var);
+		// free var binding reg
+		freeReg(var);
+
+		// remove reg form freeRegs
+		freeRegs.erase(std::remove(freeRegs.begin(), freeRegs.end(), reg), freeRegs.end());
+
+		varToReg[var] = reg;
+		return old_reg;
+
+	} else
+	{
+		// remove reg form freeRegs
+		freeRegs.erase(remove(freeRegs.begin(), freeRegs.end(), reg), freeRegs.end());
+
+		varToReg[var] = reg;
+		return "";
+	}
 }

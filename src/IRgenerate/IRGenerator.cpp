@@ -8,13 +8,17 @@ void IRGenerator::generateIR(const json &program, std::string &outputIR)
 {
 	// add LLVM header decl
 	outputIR += "declare void @print_int(i32)\n";
-	outputIR += "declare void @exit(i32)\n\n";
+	outputIR += "declare void @exit(i32)\n";
+
+	// for memory alloc
+	outputIR += "declare i8* @malloc(i64)\n";
+	outputIR += "declare i8* @malloc_at(i64, i64)\n";
+	outputIR += "declare void @free(i8*)\n\n";
+
 	outputIR += "define i32 @main() {\n";
 
 	// var addr alloc manage
-	int nextAddr = 512;
-	std::map<std::string,int> varAddrMap;
-	std::set<int> allAddrs;
+	std::map<std::string,std::string> varAddrMap;
 
 	// first step scan all var and alloc addr
 	for (const auto &stmt : program["statements"])
@@ -23,28 +27,15 @@ void IRGenerator::generateIR(const json &program, std::string &outputIR)
 		if (stmt["type"] == "Declaration")
 		{
 			std::string varName = stmt["identifier"];
-			varAddrMap[varName] = nextAddr++;
-			allAddrs.insert(varAddrMap[varName]);
-		}
-		// mov stmt dest addr
-		if (stmt["type"] == "Mov")
-		{
-			int addr = stmt["dest"];
-			allAddrs.insert(addr);
-		}
-		// find stmt addr
-		if (stmt["type"] == "Find" && stmt["target"]["type"] == "Address")
-		{
-			int addr = stmt["target"]["value"];
-			allAddrs.insert(addr);
+			varAddrMap[varName] = stmt["address"];
 		}
 	}
 
-	// second step generate alloc inst
-	for (int addr : allAddrs)
-	{
-		outputIR += "  %mem" + std::to_string(addr) + " = alloca i32"+ "\n";
-	}
+	// TODO second step generate alloc inst
+	// for (int addr : allAddrs)
+	// {
+	// 	outputIR += "  %mem" + std::to_string(addr) + " = alloca i32"+ "\n";
+	// }
 
 	// temp reg counter
 	int tempRegCount = 1;
@@ -56,11 +47,16 @@ void IRGenerator::generateIR(const json &program, std::string &outputIR)
 
 		if (type == "Declaration" && stmt.contains("initValue"))
 		{
-			// var init
+			// malloc and init
+			std::string varName = stmt["identifier"];
+			std::string varAddr = stmt["address"];
+			outputIR += "%" + varName + " = call i8* @malloc(i64 " + std::to_string(4) + ", i64 "
+			+ varAddr + ")\n";
+
 			std::string irExpr;
 			std::string value = generateExpr(stmt["initValue"],varAddrMap,tempRegCount,irExpr);
 			outputIR += irExpr;
-			outputIR += "  store i32 " + value + ", i32* %mem" + std::to_string(varAddrMap[stmt["identifier"]]) + "\n";
+			outputIR += "  store i32 " + value + ", i32* %" + varName + "\n";
 		}
 
 		else if (type == "Assignment")
@@ -68,7 +64,7 @@ void IRGenerator::generateIR(const json &program, std::string &outputIR)
 			std::string irExpr;
 			std::string value = generateExpr(stmt["value"],varAddrMap,tempRegCount,irExpr);
 			outputIR += irExpr;
-			outputIR += "  store i32 " + value + ", i32* %mem" + std::to_string(varAddrMap[stmt["target"]]) + "\n";
+			outputIR += "  store i32 " + value + ", i32* " + varAddrMap["%" + stmt["target"]] + "\n";
 		}
 
 		else if (type == "Print")
@@ -84,7 +80,7 @@ void IRGenerator::generateIR(const json &program, std::string &outputIR)
 			if (stmt["target"]["type"] == "Identifier")
 			{
 				std::string varName = stmt["target"]["name"];
-				outputIR += "  call void @print_int(i32 " + std::to_string(varAddrMap[varName]) + ")\n";
+				outputIR += "  call void @print_int(i " +  + ")\n";
 			} else if (stmt["target"]["type"] == "Address")
 			{
 				outputIR += "  call void @print_int(i32 " + std::to_string(stmt["target"]["value"].get<int>()) + ")\n";

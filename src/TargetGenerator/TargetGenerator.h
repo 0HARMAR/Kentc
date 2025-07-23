@@ -71,6 +71,7 @@ private:
 
 	// assist func
 	string trim(const string& str);
+	string normalizeReg(string reg);
 };
 
 #endif //TARGETGENERATOR_H

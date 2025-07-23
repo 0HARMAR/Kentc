@@ -6,14 +6,12 @@
 #include "LexerAnalyze/Lexer.hpp"
 #include "SyntaxAnalyze/Parser.h"
 #include "IRGenerate/IRGenerator.h"
-#include <windows.h>
 
 #include "TargetGenerator/TargetGenerator.h"
+#include "ExecutableGenerator/ExecutableGenerator.h"
 
 int main()
 {
-	system("chcp 65001 > nul"); // 设置控制台编码为UTF-8
-
     // 打开v1.0.kent
     std::ifstream src("../v1.0.kent");
     if (!src) throw std::runtime_error("Could not open file v1.0.kent");
@@ -65,5 +63,16 @@ int main()
 	{
 		std::cout << line << std::endl;
 	}
+
+	// Executable generate
+	std::cout << "\033[35mExecutable generate:\033[0m\n";
+	ExecutableGenerator executableGenerator;
+	// convert ASM lines to ASM string
+	std::string ASM;
+	for (const string& line : ASMLines)
+	{
+		ASM += line + "\n";
+	}
+	executableGenerator.generateExecutable(ASM);
     return 0;
 }

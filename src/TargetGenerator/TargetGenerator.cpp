@@ -127,7 +127,7 @@ string TargetGenerator::processBinaryOp(const vector<string>& tokens)
 	// process div
 	if (op == "sdiv")
 	{
-		handleDivision(op1, op2, result);
+		handleDivision(src1, src2, result);
 	}
 
 	// process other ops
@@ -160,12 +160,12 @@ void TargetGenerator::processCall(const vector<string>& tokens)
 			if (arg.find('%') != string::npos)
 			{
 				string var = registerAllocator.getTempVarLocation(arg);
-				addAsmLine("	movl	" + var + ", %rdi");
+				addAsmLine("	movl	" + var + ", %edi");
 			}
 			// else an immediate number
 			else
 			{
-				addAsmLine("	movl	$" + arg + ", %rdi");
+				addAsmLine("	movl	$" + arg + ", %edi");
 			}
 		}
 
@@ -182,6 +182,8 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 	addAsmLine("	.text");
 	addAsmLine("	.global	main");
 	addAsmLine("	.type	main, @function");
+	addAsmLine("	.extern	print_int");
+	addAsmLine("	.extern	exit");
 	addAsmLine("");
 	addAsmLine("main:");
 	addAsmLine("	pushq	%rbp");
@@ -263,11 +265,8 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 	}
 
 	int stackAlloc = staticProgramAnalyzer.analyze(ir_oss.str());
-	asmLines.insert(asmLines.begin() + 8, "	subq	$" + to_string(stackAlloc) + ", %rsp");
+	asmLines.insert(asmLines.begin() + 10, "	subq	$" + to_string(stackAlloc) + ", %rsp");
 
-	addAsmLine("	movl	$0, %rax");
-	addAsmLine("	leave");
-	addAsmLine("	ret");
 	addAsmLine("");
 	addAsmLine("	.section	.note.GNU-stack,\"\",@progbits");
 
