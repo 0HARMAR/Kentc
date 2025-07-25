@@ -13,12 +13,24 @@ string RegisterAllocator::allocReg()
 	return reg;
 }
 
-string RegisterAllocator::allocReg(string var)
+string RegisterAllocator::allocReg(string var, vector<string> exclude)
 {
 	if (!freeRegs.empty())
 	{
 		string reg = freeRegs.back();
-		freeRegs.pop_back();
+		if (exclude.empty())
+		{
+			freeRegs.pop_back();
+		} else
+		{
+			while (find(exclude.begin(), exclude.end(), reg) != exclude.end())
+			{
+				string conflictReg = reg;
+				reg = freeRegs.back();
+				// make conflict reg free
+				freeRegs.push_back(conflictReg);
+			}
+		}
 		varToReg[var] = reg;
 		return reg;
 	}

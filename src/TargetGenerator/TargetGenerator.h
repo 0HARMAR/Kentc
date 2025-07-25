@@ -39,9 +39,12 @@ public:
 	string processLoad(const vector<string>& tokens);
 	string processBinaryOp(const vector<string>& tokens);
 	void processCall(const vector<string>& tokens);
+	void processInttoptr(const vector<string>& tokens);
 	vector<string> convertIRToASM(const vector<string>& irLines);
 	void handleDivision(const string& dividend, const string& divisor, string& result);
-
+	void handlePrintInt(vector<string>);
+	void handleExit(vector<string>);
+	void handleMallocAt(vector<string>);
 private:
 	// program state
 	vector<string> asmLines;
@@ -72,6 +75,8 @@ private:
 	// assist func
 	string trim(const string& str);
 	string normalizeReg(string reg);
+	string denormalizeReg(string reg, int bitWide);
+	vector<string> parseCall(string callStr);
 };
 
 #endif //TARGETGENERATOR_H

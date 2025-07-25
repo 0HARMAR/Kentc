@@ -38,5 +38,7 @@ add_executable(kentc src/main.cpp
         src/CompileOptimise/AssemblyParser.h
         src/ExecutableGenerator/ExecutableGenerator.cpp
         src/ExecutableGenerator/ExecutableGenerator.h
-        src/memoryAllocator.cpp
+        src/memoryAllocator/memoryAllocator.cpp
+        src/TargetGenerator/convertIRtoAsm.cpp
+        src/TargetGenerator/handleFunctionCall.cpp
 )

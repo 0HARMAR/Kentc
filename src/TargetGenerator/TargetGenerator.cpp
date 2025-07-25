@@ -59,14 +59,16 @@ void TargetGenerator::processStore(const vector<string>& tokens)
 	string type = trim(tokens[1]);
 	string destVar = trim(tokens[2]);
 
+	string varAddrReg;
+	if (destVar[0] == '%') // var addr store in a register
+	{
+		varAddrReg = registerAllocator.getTempVarLocation(destVar);
+	}
+
 	// if prefix no %, it`s an immediate operand
 	if (value.find('%') == string::npos)
 	{
-		if (variables.find(destVar) != variables.end())
-		{
-			addAsmLine("	movl	$" + value + ", " +
-				to_string(variables[destVar].stackOffset) + "(%rbp)");
-		}
+			addAsmLine("	movq	$" + value + ", (" + varAddrReg + ")");
 	}
 	// temp var
 	else
@@ -74,7 +76,7 @@ void TargetGenerator::processStore(const vector<string>& tokens)
 		if (variables.find(destVar) != variables.end())
 		{
 			string varToReg = registerAllocator.getTempVarLocation(value);
-			addAsmLine("	movl	" + varToReg + ", " + to_string(variables[destVar].stackOffset) + "(%rbp)");
+			addAsmLine("	movq	" + varToReg + ", " + to_string(variables[destVar].stackOffset) + "(%rbp)");
 		}
 	}
 }
@@ -87,11 +89,9 @@ string TargetGenerator::processLoad(const vector<string>& tokens)
 	string destVar = trim(tokens[0]);
 	string srcAddr = trim(tokens[1]);
 
-	if (variables.find(srcAddr) != variables.end())
-	{
-		string varToReg = registerAllocator.allocReg(destVar);
-		addAsmLine("	movl	" + to_string(variables[srcAddr].stackOffset) + "(%rbp)" + ", " + varToReg);
-	}
+	string srcAddrReg = registerAllocator.getTempVarLocation(srcAddr);
+	string destVarReg = registerAllocator.allocReg(destVar);
+	addAsmLine("	movq	(" + srcAddrReg + "), " + destVarReg);
 	return "";
 }
 
@@ -111,6 +111,7 @@ string TargetGenerator::processBinaryOp(const vector<string>& tokens)
 	if (op1.find('%') != string::npos)
 	{
 		src1 = registerAllocator.getTempVarLocation(op1);
+		src1 = denormalizeReg(src1, 32);
 	} else
 	{
 		src1 = "$" + op1;
@@ -119,6 +120,7 @@ string TargetGenerator::processBinaryOp(const vector<string>& tokens)
 	if (op2.find('%') != string::npos)
 	{
 		src2 = registerAllocator.getTempVarLocation(op2);
+		src2 = denormalizeReg(src2, 32);
 	} else
 	{
 		src2 = "$" + op2;
@@ -134,8 +136,9 @@ string TargetGenerator::processBinaryOp(const vector<string>& tokens)
 	if (opMap.find(op) != opMap.end() && op != "sdiv")
 	{
 		string resultReg = registerAllocator.allocReg(result);
-		addAsmLine("	movl	" + src1 + ", " + resultReg);
-		addAsmLine("	" + opMap[op] + "	" + src2 + ", " + resultReg);
+		if (src1[0] != '$') addAsmLine("	movq	" + normalizeReg(src1) + ", " + resultReg);
+		else addAsmLine("	movq	" + src1 + ", " + resultReg);
+		addAsmLine("	" + opMap[op] + "	" + src2 + ", " + denormalizeReg(resultReg, 32));
 	}
 
 	return "";
@@ -146,133 +149,37 @@ void TargetGenerator::processCall(const vector<string>& tokens)
 	if (tokens.empty()) return;
 
 	string funcName = tokens[0];
-	funcName.erase(funcName.size()-4);
+	string returnType = tokens[1];
+	string returnReg = tokens[2];
+	map<string, string> argList; // name -> type mapping
 
-	if (funcName == "@print_int" || funcName == "@exit")
+	for (int i = 3; i < tokens.size(); i += 2)
 	{
-		string arg;
-		if (tokens.size() > 1)
-		{
-			arg = tokens[1];
-			arg.pop_back();
-
-			// if arg is variable
-			if (arg.find('%') != string::npos)
-			{
-				string var = registerAllocator.getTempVarLocation(arg);
-				addAsmLine("	movl	" + var + ", %edi");
-			}
-			// else an immediate number
-			else
-			{
-				addAsmLine("	movl	$" + arg + ", %edi");
-			}
-		}
-
-		addAsmLine(CallingConvention::addCallerSave());
-		addAsmLine("	call	" + funcName.substr(1));
-		addAsmLine(CallingConvention::restoreCallerSave());
+		if (i + 1 >= tokens.size()) break;
+		string argType = tokens[i];
+		string argName = tokens[i + 1];
+		argList[argName] = argType;
 	}
+
+	if (funcName == "print_int") {
+		handlePrintInt(tokens);
+	} else if (funcName == "exit") {
+		handleExit(tokens);
+	} else if (funcName == "malloc") {
+	} else if (funcName == "free") {
+	} else if (funcName == "malloc_at") {
+		handleMallocAt(tokens);
+	}
+
 }
 
-vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
+void TargetGenerator::processInttoptr(const vector<string>& tokens)
 {
-	// add asm prefix
-	addAsmLine("#Generated AT&T assembly from LLVM IR");
-	addAsmLine("	.text");
-	addAsmLine("	.global	main");
-	addAsmLine("	.type	main, @function");
-	addAsmLine("	.extern	print_int");
-	addAsmLine("	.extern	exit");
-	addAsmLine("");
-	addAsmLine("main:");
-	addAsmLine("	pushq	%rbp");
-	addAsmLine("	movq	%rsp, %rbp");
+	string convertToReg = tokens[0];
+	string convertValue = tokens[1];
 
-	for (const auto& line : irLines)
-	{
-		string trimmed = trim(line);
-		if (trimmed.empty()) continue;
-
-		// skip decl and metadata
-		if (trimmed.find("declare") == 0 ||
-			trimmed.find("define") == 0 ||
-				trimmed.find("}") == 0)
-		{
-			continue;
-		}
-
-		// split instruction
-		vector<string> tokens;
-		istringstream iss(trimmed);
-		string token;
-		while (iss >> token)
-		{
-			tokens.push_back(token);
-		}
-
-		if (tokens.empty()) continue;
-
-		// alloca instruction
-		if (tokens[2].find("alloca") != string::npos)
-		{
-			vector<string> args;
-			args.push_back(tokens[0]);
-			args.push_back(tokens[3]);
-			processAlloca(args);
-		}
-		else if (tokens[0] == "store")
-		{
-			vector<string> args;
-			args.push_back(tokens[2]);
-			args.push_back(tokens[1]);
-			args.push_back(tokens[4]);
-			processStore(args);
-		}
-		else if (tokens[2] == "load")
-		{
-			vector<string> args;
-			args.push_back(tokens[0]);
-			args.push_back(tokens[5]);
-			processLoad(args);
-		}
-		else if (opMap.find(tokens[2]) != opMap.end())
-		{
-			string result = *tokens.rbegin();
-			vector<string> args;
-			args.push_back(tokens[0]);
-			args.push_back(tokens[2]);
-			args.push_back(tokens[3]);
-			args.push_back(tokens[4]);
-			args.push_back(tokens[5]);
-
-			processBinaryOp(args);
-		}
-		else if (tokens[0] == "call")
-		{
-			vector<string> args;
-			args.push_back(tokens[2]);
-			args.push_back(tokens[3]);
-			processCall(args);
-		}
-	}
-
-	// calculate stack size and add asm suffix
-	ostringstream ir_oss;
-	for (size_t i = 0; i < irLines.size(); ++i)
-	{
-		ir_oss << irLines[i] << endl;
-	}
-
-	int stackAlloc = staticProgramAnalyzer.analyze(ir_oss.str());
-	asmLines.insert(asmLines.begin() + 10, "	subq	$" + to_string(stackAlloc) + ", %rsp");
-
-	addAsmLine("");
-	addAsmLine("	.section	.note.GNU-stack,\"\",@progbits");
-
-	return asmLines;
+	string Reg = registerAllocator.allocReg(convertToReg);
+	addAsmLine("	movl	$" + convertValue + ", " + denormalizeReg(Reg, 32));
 }
-
-
 
 

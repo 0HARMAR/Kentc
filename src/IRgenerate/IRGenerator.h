@@ -15,8 +15,7 @@ public:
 	void generateIR(const json &program, std::string &outputIR);
 
 private:
-	std::string generateExpr(const json &expr, std::map<std::string,int> &varAddrMap,
-		int &tempRegCount, std::string &ir);
+	std::string generateExpr(const json &expr,int &tempRegCount, std::string &ir);
 };
 
 

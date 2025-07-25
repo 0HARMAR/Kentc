@@ -17,19 +17,16 @@ void IRGenerator::generateIR(const json &program, std::string &outputIR)
 
 	outputIR += "define i32 @main() {\n";
 
-	// var addr alloc manage
-	std::map<std::string,std::string> varAddrMap;
-
 	// first step scan all var and alloc addr
-	for (const auto &stmt : program["statements"])
-	{
-		// var decl
-		if (stmt["type"] == "Declaration")
-		{
-			std::string varName = stmt["identifier"];
-			varAddrMap[varName] = stmt["address"];
-		}
-	}
+	// for (const auto &stmt : program["statements"])
+	// {
+	// 	// var decl
+	// 	if (stmt["type"] == "Declaration")
+	// 	{
+	// 		std::string varName = stmt["identifier"];
+	// 		varAddrMap[varName] = stmt["address"];
+	// 	}
+	// }
 
 	// TODO second step generate alloc inst
 	// for (int addr : allAddrs)
@@ -49,30 +46,31 @@ void IRGenerator::generateIR(const json &program, std::string &outputIR)
 		{
 			// malloc and init
 			std::string varName = stmt["identifier"];
-			std::string varAddr = stmt["address"];
-			outputIR += "%" + varName + " = call i8* @malloc(i64 " + std::to_string(4) + ", i64 "
+			std::string varAddr = std::to_string(stmt["address"].get<int>());
+			outputIR += "	%" + varName + " = call i8* @malloc_at(i64 " + std::to_string(4) + ", i64 "
 			+ varAddr + ")\n";
 
 			std::string irExpr;
-			std::string value = generateExpr(stmt["initValue"],varAddrMap,tempRegCount,irExpr);
+			std::string value = generateExpr(stmt["initValue"],tempRegCount,irExpr);
 			outputIR += irExpr;
-			outputIR += "  store i32 " + value + ", i32* %" + varName + "\n";
+			outputIR += "	store i32 " + value + ", i32* %" + varName + "\n";
 		}
 
 		else if (type == "Assignment")
 		{
 			std::string irExpr;
-			std::string value = generateExpr(stmt["value"],varAddrMap,tempRegCount,irExpr);
+			std::string value = generateExpr(stmt["value"],tempRegCount,irExpr);
 			outputIR += irExpr;
-			outputIR += "  store i32 " + value + ", i32* " + varAddrMap["%" + stmt["target"]] + "\n";
+			std::string targetVar = "%" + stmt["target"].get<std::string>();
+			outputIR += "	store i32 " + value + ", i32* " + targetVar + "\n";
 		}
 
 		else if (type == "Print")
 		{
 			std::string irExpr;
-			std::string value = generateExpr(stmt["expression"],varAddrMap,tempRegCount,irExpr);
+			std::string value = generateExpr(stmt["expression"],tempRegCount,irExpr);
 			outputIR += irExpr;
-			outputIR += "  call void @print_int(i32 " + value + ")\n";
+			outputIR += "	call void @print_int(i32 " + value + ")\n";
 		}
 
 		else if (type == "Find")
@@ -80,19 +78,20 @@ void IRGenerator::generateIR(const json &program, std::string &outputIR)
 			if (stmt["target"]["type"] == "Identifier")
 			{
 				std::string varName = stmt["target"]["name"];
-				outputIR += "  call void @print_int(i " +  + ")\n";
-			} else if (stmt["target"]["type"] == "Address")
-			{
-				outputIR += "  call void @print_int(i32 " + std::to_string(stmt["target"]["value"].get<int>()) + ")\n";
+				outputIR += "	call void @print_int(i32 %" + varName + ")\n";
 			}
 		}
 
 		else if (type == "Mov")
 		{
 			std::string irExpr;
-			std::string value = generateExpr(stmt["source"],varAddrMap,tempRegCount,irExpr);
+			std::string value = generateExpr(stmt["source"],tempRegCount,irExpr);
 			outputIR += irExpr;
-			outputIR += "  store i32 " + value + ", i32* %mem" + std::to_string(stmt["dest"].get<int>()) + "\n";
+			std::string addr = std::to_string(stmt["dest"].get<int>());
+			// convert immediate address to point
+			std::string addrReg = "%t" + std::to_string(tempRegCount++);
+			outputIR += "	" + addrReg + " = inttoptr i64 " + addr + " to i32*\n";
+			outputIR += "	store i32 " + value + ", i32* " + addrReg + "\n";
 		}
 	}
 
@@ -102,7 +101,7 @@ void IRGenerator::generateIR(const json &program, std::string &outputIR)
 
 }
 
-std::string IRGenerator::generateExpr(const json &expr, std::map<std::string,int> &varAddrMap,
+std::string IRGenerator::generateExpr(const json &expr,
 	int &tempRegCount, std::string &ir)
 {
 	if (expr["type"] == "Integer")
@@ -112,15 +111,14 @@ std::string IRGenerator::generateExpr(const json &expr, std::map<std::string,int
 	if (expr["type"] == "Identifier")
 	{
 		std::string varName = expr["name"];
-		int addr = varAddrMap[varName];
 		std::string tempReg = "%t" + std::to_string(tempRegCount++);
-		ir += "  " + tempReg + " = load i32, i32* %mem" + std::to_string(addr) + "\n";
+		ir += "  " + tempReg + " = load i32, i32* " + "%" + varName + "\n";
 		return tempReg;
 	}
 	if (expr["type"] == "BinaryExpr")
 	{
-		std::string left = generateExpr(expr["left"],varAddrMap,tempRegCount,ir);
-		std::string right = generateExpr(expr["right"],varAddrMap,tempRegCount,ir);
+		std::string left = generateExpr(expr["left"],tempRegCount,ir);
+		std::string right = generateExpr(expr["right"],tempRegCount,ir);
 		std::string op = expr["operator"];
 		std::string resultReg = "%t" + std::to_string(tempRegCount++);
 

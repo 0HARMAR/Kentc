@@ -14,7 +14,7 @@ class RegisterAllocator {
 public:
 	void allocMemoryAddr(string addrVar, int size=4);
 	string getMemLocation(string addrVar);
-	string allocReg(string var);
+	string allocReg(string var, vector<string>exclude = {});
 	string allocReg(string var, string reg);
 	string allocReg();
 	string spillVar(string var);
@@ -26,7 +26,7 @@ public:
 	string spillRegister(string var);
 private:
 	vector<string> freeRegs = {"%rdi", "%rsi", "%rax", "%rbx", "%rcx", "%rdx",
-		"%r8d","%r9d", "%r10d", "%r11d", "%r12d", "%r13d", "%r14d", "%r15d"};
+		"%r8","%r9", "%r10", "%r11", "%r12", "%r13", "%r14", "%r15"};
 	unordered_map<string, string> varToReg; // variable to register mapping
 	unordered_map<string, int> addrToStack; // address variable to stack offset mapping
 	unordered_map<string, int> spilledVars; // spilled variables to stack offset mapping

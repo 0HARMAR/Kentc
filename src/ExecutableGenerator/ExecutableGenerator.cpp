@@ -45,7 +45,7 @@ void ExecutableGenerator::linkExecutable(const vector<string>& linkLibs)
 	// cmd << "ld -m elf_x86_64 -e main -o " << buildRoot + "output/" + elfFile << " " << buildRoot + objFile;
 
 	// use gcc to link
-	cmd << "gcc -m64 -nostartfiles -e main -o " + buildRoot + "output/" + elfFile + " " + buildRoot + objFile;
+	cmd << "g++ -m64 -nostartfiles -e main -o " + buildRoot + "output/" + elfFile + " " + buildRoot + objFile;
 
 	for (auto& lib : linkLibs)
 	{

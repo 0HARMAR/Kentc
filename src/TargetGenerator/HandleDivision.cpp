@@ -17,7 +17,7 @@ void TargetGenerator::handleDivision(const string& dividend, const string& divis
 		{
 			// make %eax free
 			string new_reg = registerAllocator.spillRegister(eaxUser);
-			addAsmLine("	movl	%eax, " + new_reg);
+			addAsmLine("	movq	%eax, " + denormalizeReg(new_reg, 32));
 
 			// make dividend binding to %eax, free old reg
 			if (dividend[0] == '$') // dividend is an immediate
@@ -26,7 +26,7 @@ void TargetGenerator::handleDivision(const string& dividend, const string& divis
 			} else // dividend is a temp var
 			{
 				string old_reg = registerAllocator.allocReg(dividend, normalizeReg("%eax"));
-				addAsmLine("	movl	" + old_reg + ", %eax");
+				addAsmLine("	movl	" + denormalizeReg(old_reg, 32) + ", %eax");
 			}
 
 		}
@@ -39,7 +39,7 @@ void TargetGenerator::handleDivision(const string& dividend, const string& divis
 		} else // dividend is a temp var
 		{
 			string old_reg = registerAllocator.allocReg(dividend, normalizeReg("%eax"));
-			addAsmLine("	movl	" + old_reg + ", %eax");
+			addAsmLine("	movl	" + denormalizeReg(old_reg, 32) + ", %eax");
 		}
 	}
 
@@ -56,23 +56,54 @@ void TargetGenerator::handleDivision(const string& dividend, const string& divis
 	else  // immediate value
 	{
 		divisorReg = registerAllocator.allocReg();
-		addAsmLine("	movl	" + divisor + ", " + divisorReg);
+		addAsmLine("	movl	" + divisor + ", " + denormalizeReg(divisorReg, 32));
 	}
 
 	// generate divide instruction
 	addAsmLine("	cltd"); // sign extend %eax to %edx
-	addAsmLine("	idivl	" + divisorReg);
+	addAsmLine("	idivl	" + denormalizeReg(divisorReg, 32));
 
 	string resultReg = registerAllocator.allocReg(result);
-	addAsmLine("	movl	%eax, " + resultReg); // move result to result reg
+	addAsmLine("	movl	%eax, " + denormalizeReg(resultReg, 32)); // move result to result reg
 
 	// free op reg
 	registerAllocator.freeReg(dividend);
 	registerAllocator.freeReg(divisor);
 }
 
+// convert to 64 bit register
 string TargetGenerator::normalizeReg(string reg)
 {
 	string noBitPrefixReg = reg.substr(2);
-	return "r" + noBitPrefixReg;
+	// r8d/w/ - r15d/w/
+	if (isdigit(noBitPrefixReg[0]))
+	{
+		reg.pop_back();
+		return reg;
+	} else
+	{
+		return "%r" + noBitPrefixReg;
+	}
+}
+
+// convert 64 bit register to bitWide bit register
+string TargetGenerator::denormalizeReg(string reg, int bitWide)
+{
+	string noBitPrefixReg = reg.substr(2);
+	if (isdigit(noBitPrefixReg[0]))
+	{
+		switch (bitWide)
+		{
+		case 32 : return reg + 'd';
+		case 16 : return reg + 'w';
+		}
+	}
+	else
+	{
+		switch (bitWide)
+		{
+		case 32 : return "%e" + noBitPrefixReg;
+		case 16 : return "%" + noBitPrefixReg;
+		}
+	}
 }

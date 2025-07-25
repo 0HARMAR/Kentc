@@ -66,6 +66,7 @@ int StaticProgramAnalyzer::calculateFinalMemory()
 		}
 	}
 
+	if (total_size_aligned == 0) return alignment;
 	return total_size_aligned;
 }
 
