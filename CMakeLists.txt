@@ -41,4 +41,9 @@ add_executable(kentc src/main.cpp
         src/memoryAllocator/memoryAllocator.cpp
         src/TargetGenerator/convertIRtoAsm.cpp
         src/TargetGenerator/handleFunctionCall.cpp
+        src/TargetGenerator/asmWriter.cpp
+        src/TargetGenerator/AsmWriter.h
 )
+
+add_executable(malloc_test src/memoryAllocator/mallocTest.cpp
+src/memoryAllocator/memoryAllocator.cpp)

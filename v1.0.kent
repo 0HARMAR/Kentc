@@ -2,8 +2,8 @@ set int a = 5 at 0x200
 a = 2
 print a
 find a
-mov 1 to 0x201
-mov a to 0x202
+mov 1 to 0x204
+mov a to 0x208
 
 a = 1 + 2 * 3 -10 /5
 

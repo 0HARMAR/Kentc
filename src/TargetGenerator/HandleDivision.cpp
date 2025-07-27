@@ -17,7 +17,7 @@ void TargetGenerator::handleDivision(const string& dividend, const string& divis
 		{
 			// make %eax free
 			string new_reg = registerAllocator.spillRegister(eaxUser);
-			addAsmLine("	movq	%eax, " + denormalizeReg(new_reg, 32));
+			addAsmLine("	movl	%eax, " + denormalizeReg(new_reg, 32));
 
 			// make dividend binding to %eax, free old reg
 			if (dividend[0] == '$') // dividend is an immediate
@@ -55,7 +55,9 @@ void TargetGenerator::handleDivision(const string& dividend, const string& divis
 	if (divisor[0] == '%') {} // temp var
 	else  // immediate value
 	{
-		divisorReg = registerAllocator.allocReg();
+		vector<string> exclude;
+		exclude.push_back("%rdx");
+		divisorReg = registerAllocator.allocReg(exclude);
 		addAsmLine("	movl	" + divisor + ", " + denormalizeReg(divisorReg, 32));
 	}
 
@@ -66,44 +68,49 @@ void TargetGenerator::handleDivision(const string& dividend, const string& divis
 	string resultReg = registerAllocator.allocReg(result);
 	addAsmLine("	movl	%eax, " + denormalizeReg(resultReg, 32)); // move result to result reg
 
-	// free op reg
-	registerAllocator.freeReg(dividend);
-	registerAllocator.freeReg(divisor);
 }
 
 // convert to 64 bit register
 string TargetGenerator::normalizeReg(string reg)
 {
-	string noBitPrefixReg = reg.substr(2);
-	// r8d/w/ - r15d/w/
-	if (isdigit(noBitPrefixReg[0]))
+	if (reg[0] == '%')
 	{
-		reg.pop_back();
-		return reg;
-	} else
-	{
-		return "%r" + noBitPrefixReg;
-	}
+		string noBitPrefixReg = reg.substr(2);
+		// r8d/w/ - r15d/w/
+		if (isdigit(noBitPrefixReg[0]))
+		{
+			reg.pop_back();
+			return reg;
+		} else
+		{
+			return "%r" + noBitPrefixReg;
+		}
+	} else return reg;
+
 }
 
 // convert 64 bit register to bitWide bit register
 string TargetGenerator::denormalizeReg(string reg, int bitWide)
 {
-	string noBitPrefixReg = reg.substr(2);
-	if (isdigit(noBitPrefixReg[0]))
+	if (reg[0] == '%')
 	{
-		switch (bitWide)
+		string noBitPrefixReg = reg.substr(2);
+		if (isdigit(noBitPrefixReg[0]))
 		{
-		case 32 : return reg + 'd';
-		case 16 : return reg + 'w';
+			switch (bitWide)
+			{
+			case 32 : return reg + 'd';
+			case 16 : return reg + 'w';
+			}
 		}
-	}
-	else
-	{
-		switch (bitWide)
+		else
 		{
-		case 32 : return "%e" + noBitPrefixReg;
-		case 16 : return "%" + noBitPrefixReg;
+			switch (bitWide)
+			{
+			case 32 : return "%e" + noBitPrefixReg;
+			case 16 : return "%" + noBitPrefixReg;
+			}
 		}
-	}
+	} else return reg;
+
 }

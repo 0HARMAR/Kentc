@@ -13,6 +13,8 @@
 #include "RegisterAllocator.h"
 #include "../StaticProgramAnalysis/StaticProgramAnalyzer.h"
 #include "CallingConvention.h"
+#include "AsmWriter.h"
+#include <stdint.h>
 using namespace std;
 struct Variable
 {
@@ -28,9 +30,12 @@ struct Instruction
 	string result;
 };
 
+extern "C" void* malloc_at(size_t size, size_t offset);
+
 class TargetGenerator
 {
 public:
+	TargetGenerator();
 	void addAsmLine(const string& line);
 	void addAsmLine(const vector<string>& lines);
 	string createTempVar();
@@ -72,11 +77,15 @@ private:
 	// static program analyzer
 	StaticProgramAnalyzer staticProgramAnalyzer;
 
+	// asm writer
+	AsmWriter asmWriter;
+
 	// assist func
 	string trim(const string& str);
 	string normalizeReg(string reg);
 	string denormalizeReg(string reg, int bitWide);
 	vector<string> parseCall(string callStr);
+	bool isMemory(string op);
 };
 
 #endif //TARGETGENERATOR_H

@@ -14,6 +14,14 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 	addAsmLine("main:");
 	addAsmLine("	pushq	%rbp");
 	addAsmLine("	movq	%rsp, %rbp");
+	asmWriter.mov("$9", "%rax", "q");
+	asmWriter.mov("$0x600000", "%rdi", "q");
+	asmWriter.mov("$0x1000000", "%rsi", "q");
+	asmWriter.mov("$3", "%rdx", "q");
+	asmWriter.mov("$0x32", "%r10", "q");
+	asmWriter.Xor("%r8", "%r8", "q");
+	asmWriter.Xor("%r9", "%r9", "q");
+	asmWriter.syscall();
 
 	for (const auto& line : irLines)
 	{
@@ -118,7 +126,7 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 	}
 
 	int stackAlloc = staticProgramAnalyzer.analyze(ir_oss.str());
-	asmLines.insert(asmLines.begin() + 10, "	subq	$" + to_string(stackAlloc) + ", %rsp");
+	asmLines.insert(asmLines.begin() + 11, "	subq	$" + to_string(stackAlloc) + ", %rsp");
 
 	addAsmLine("");
 	addAsmLine("	.section	.note.GNU-stack,\"\",@progbits");
@@ -188,6 +196,15 @@ vector<string> TargetGenerator::parseCall(string callStr)
 	return tokens;
 }
 
+bool TargetGenerator::isMemory(string op)
+{
+	size_t openParen = op.find('(');
+	size_t closeParen = op.find(')');
+
+	return (openParen != string::npos) &&
+		(closeParen != string::npos) &&
+			(openParen < closeParen);
+}
 
 
 

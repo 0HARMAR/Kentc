@@ -6,6 +6,8 @@
 
 #include <complex>
 
+TargetGenerator::TargetGenerator() : asmLines(), asmWriter(asmLines), registerAllocator(this->asmWriter){}
+
 string TargetGenerator::trim(const string& str)
 {
 	size_t first = str.find_first_not_of(' \t');
@@ -53,45 +55,81 @@ void TargetGenerator::processStore(const vector<string>& tokens)
 {
 	if (tokens.size() != 3) return ;
 
-	// analyze : store i32 5, i32* %mem512
+	// pattern : store i32 [storeValue], i32* [storeAddr]
+	// e.g. store i32 5, i32* %t1
 	string value = trim(tokens[0]);
 	value.pop_back();
 	string type = trim(tokens[1]);
 	string destVar = trim(tokens[2]);
 
-	string varAddrReg;
-	if (destVar[0] == '%') // var addr store in a register
+	// e.g. storeAddr : (%rax), (-8(%rbp))(not allow in syntax)
+	string storeAddr;
+	string spilledTransitReg = "";
+	if (destVar[0] == '%') // addr store in a temp register
 	{
-		varAddrReg = registerAllocator.getTempVarLocation(destVar);
+		storeAddr = registerAllocator.getTempVarLocation(destVar);
+		if (isMemory(storeAddr))
+		{
+			spilledTransitReg = registerAllocator.getRandomTransitReg();
+			asmWriter.push(spilledTransitReg);
+			asmWriter.mov(storeAddr, spilledTransitReg, "q");
+			storeAddr = "(" + spilledTransitReg + ")";
+		} else storeAddr = "(" + storeAddr + ")";
 	}
 
-	// if prefix no %, it`s an immediate operand
-	if (value.find('%') == string::npos)
+	// e.g. storeValue : $0x5, %rax, -8(%rbp)
+	string storeValue;
+	if (value[0] == '%') // value is a temp register
 	{
-			addAsmLine("	movq	$" + value + ", (" + varAddrReg + ")");
-	}
-	// temp var
-	else
+		storeValue = registerAllocator.getTempVarLocation(value);
+	} else // value is an immediate
 	{
-		if (variables.find(destVar) != variables.end())
-		{
-			string varToReg = registerAllocator.getTempVarLocation(value);
-			addAsmLine("	movq	" + varToReg + ", " + to_string(variables[destVar].stackOffset) + "(%rbp)");
-		}
+		storeValue = "$0x" + value;
 	}
+
+	// not allow mov mem to mem
+	if (isMemory(storeValue))
+	{
+		string spilledTransitReg = registerAllocator.getRandomTransitReg();
+		asmWriter.push(spilledTransitReg);
+		asmWriter.mov(storeValue, spilledTransitReg, "q");
+		asmWriter.mov(spilledTransitReg, storeAddr, "q");
+		asmWriter.pop(spilledTransitReg);
+		return;
+	}
+
+	asmWriter.mov(storeValue, storeAddr, "q");
+	if (!spilledTransitReg.empty()) asmWriter.pop(spilledTransitReg);
 }
 
 string TargetGenerator::processLoad(const vector<string>& tokens)
 {
 	if (tokens.size() != 2) return "";
 
-	// analyze : %t1 = load i32, i32* %mem512
+	// pattern : [loadValue] = load i32, i32* [loadAddr]
+	// e.g. %t1 = load i32, i32* %b
 	string destVar = trim(tokens[0]);
 	string srcAddr = trim(tokens[1]);
 
-	string srcAddrReg = registerAllocator.getTempVarLocation(srcAddr);
-	string destVarReg = registerAllocator.allocReg(destVar);
-	addAsmLine("	movq	(" + srcAddrReg + "), " + destVarReg);
+	// e.g. loadAddr : (%rax), (-8(%rbp))(not allow in syntax)
+	string loadAddr = registerAllocator.getTempVarLocation(srcAddr);
+	loadAddr = "(" + loadAddr + ")";
+
+	// e.g. loadValue : %rbx
+	string loadValue = registerAllocator.allocReg(destVar);
+
+	// not allow mov mem to mem
+	if (isMemory(loadValue))
+	{
+		string spilledTransitReg = registerAllocator.getRandomTransitReg();
+		asmWriter.push(spilledTransitReg);
+		asmWriter.mov(loadAddr, spilledTransitReg, "q");
+		asmWriter.mov(spilledTransitReg, loadValue, "q");
+		asmWriter.pop(spilledTransitReg);
+		return "";
+	}
+
+	asmWriter.mov(loadAddr, loadValue, "q");
 	return "";
 }
 
@@ -136,7 +174,16 @@ string TargetGenerator::processBinaryOp(const vector<string>& tokens)
 	if (opMap.find(op) != opMap.end() && op != "sdiv")
 	{
 		string resultReg = registerAllocator.allocReg(result);
-		if (src1[0] != '$') addAsmLine("	movq	" + normalizeReg(src1) + ", " + resultReg);
+		if (src1[0] != '$')
+		{
+			if (isMemory(src1) && isMemory(resultReg))
+			{
+				asmWriter.movMemToMem(src1, resultReg, registerAllocator.getRandomTransitReg(), "q");
+			} else
+			{
+				addAsmLine("	movq	" + normalizeReg(src1) + ", " + resultReg);
+			}
+		}
 		else addAsmLine("	movq	" + src1 + ", " + resultReg);
 		addAsmLine("	" + opMap[op] + "	" + src2 + ", " + denormalizeReg(resultReg, 32));
 	}
@@ -178,8 +225,14 @@ void TargetGenerator::processInttoptr(const vector<string>& tokens)
 	string convertToReg = tokens[0];
 	string convertValue = tokens[1];
 
+	stringstream ss;
+	void* addr = malloc_at(4, stoul(convertValue));
+	uintptr_t intAddr = reinterpret_cast<uintptr_t>(addr);
+	ss << hex << intAddr;
+	string realAddr = ss.str();
+
 	string Reg = registerAllocator.allocReg(convertToReg);
-	addAsmLine("	movl	$" + convertValue + ", " + denormalizeReg(Reg, 32));
+	addAsmLine("	movl	$0x" + realAddr + ", " + denormalizeReg(Reg, 32));
 }
 
 

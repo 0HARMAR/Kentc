@@ -1,0 +1,37 @@
+declare void @print_int(i32)
+declare void @exit(i32)
+declare i8* @malloc(i64)
+declare i8* @malloc_at(i64, i64)
+declare void @free(i8*)
+
+define i32 @main() {
+	%a = call i8* @malloc_at(i64 4, i64 512)
+	store i32 5, i32* %a
+	store i32 2, i32* %a
+  %t1 = load i32, i32* %a
+	call void @print_int(i32 %t1)
+	call void @print_int(i32 %a)
+	%t2 = inttoptr i64 513 to i32*
+	store i32 1, i32* %t2
+  %t3 = load i32, i32* %a
+	%t4 = inttoptr i64 514 to i32*
+	store i32 %t3, i32* %t4
+  %t5 = mul i32 2, 3
+  %t6 = add i32 1, %t5
+  %t7 = sdiv i32 10, 5
+  %t8 = sub i32 %t6, %t7
+	store i32 %t8, i32* %a
+  %t9 = load i32, i32* %a
+	call void @print_int(i32 %t9)
+	%b = call i8* @malloc_at(i64 4, i64 768)
+	store i32 100, i32* %b
+  %t10 = mul i32 2, 3
+  %t11 = sdiv i32 20, 2
+  %t12 = add i32 %t10, %t11
+	store i32 %t12, i32* %b
+  %t13 = load i32, i32* %b
+	call void @print_int(i32 %t13)
+	call void @print_int(i32 %b)
+  call void @exit(i32 0)
+  ret i32 0
+}

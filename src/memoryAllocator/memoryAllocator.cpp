@@ -9,7 +9,7 @@
 constexpr size_t ALIGNMENT = 8;
 
 // heap memory start address
-static uintptr_t heap_base = 600000;
+static uintptr_t heap_base = 0x600000;
 
 // free list node (embed in free block)
 struct FreeNode
@@ -36,7 +36,11 @@ static std::mutex alloc_mutex;
 void* custom_malloc_at(size_t size, size_t offset);
 extern "C" void* malloc_at(size_t size, size_t offset)
 {
-	custom_malloc_at(size, offset);
+	// TODO fix bugs
+	// custom_malloc_at(size, offset);
+
+	// default impl
+	return (void*)(heap_base + offset);
 }
 
 // assist function : align to up
@@ -288,4 +292,3 @@ void custom_free(void* ptr)
 	if (free_lists[class_idx]) free_lists[class_idx] -> prev = node;
 	free_lists[class_idx] = node;
 }
-

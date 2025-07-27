@@ -5,12 +5,27 @@
 #include "RegisterAllocator.h"
 #include "CallingConvention.h"
 
+RegisterAllocator::RegisterAllocator(AsmWriter& asmWriter) : asmWriter(asmWriter) {}
+
 // alloc register for immediate
-string RegisterAllocator::allocReg()
+string RegisterAllocator::allocReg(vector<string> exclude)
 {
 	string reg = freeRegs.back();
-	freeRegs.pop_back();
-	return reg;
+	auto it = find_if(freeRegs.begin(), freeRegs.end(), [&](const auto& r)
+			{
+				return find(exclude.begin(), exclude.end(), r) == exclude.end();
+			});
+
+	if (it != freeRegs.end())
+	{
+		reg = *it;
+		freeRegs.erase(it);
+	} else
+	{
+		reg = "";
+	}
+	if (reg != "")freeRegs.pop_back();
+	return spillVar();
 }
 
 string RegisterAllocator::allocReg(string var, vector<string> exclude)
@@ -18,38 +33,55 @@ string RegisterAllocator::allocReg(string var, vector<string> exclude)
 	if (!freeRegs.empty())
 	{
 		string reg = freeRegs.back();
-		if (exclude.empty())
+		// no exclude or not exclude register, use it directly
+		if (exclude.empty() || find(exclude.begin(), exclude.end(), reg) == exclude.end())
 		{
 			freeRegs.pop_back();
 		} else
 		{
-			while (find(exclude.begin(), exclude.end(), reg) != exclude.end())
+			auto it = find_if(freeRegs.begin(), freeRegs.end(), [&](const auto& r)
 			{
-				string conflictReg = reg;
-				reg = freeRegs.back();
-				// make conflict reg free
-				freeRegs.push_back(conflictReg);
+				return find(exclude.begin(), exclude.end(), r) == exclude.end();
+			});
+
+			if (it != freeRegs.end())
+			{
+				reg = *it;
+				freeRegs.erase(it);
+			} else
+			{
+				reg = "";
 			}
 		}
-		varToReg[var] = reg;
-		return reg;
+		if (reg != "")
+		{
+			varToReg[var] = reg;
+			return reg;
+		}
 	}
 	return spillVar(var);
 }
 
+// if free register null, put temp var to stack
 string RegisterAllocator::spillVar(string var)
 {
-	string spillTarget = selectSpillCandidate();
 	int spillSlot = stackOffset - 4;
+	if (spillSlot < stackSize) extandStack();
 	stackOffset -= 4;
-	spilledVars[spillTarget] = spillSlot;
+	spilledVars[var] = spillSlot;
 
-	// TODO generate asm code to spill the variable
-
-	freeReg(spillTarget); // free the register used by the spilled variable
-	return allocReg(var); // realloc
+	return std::to_string(stackOffset) + "(%rbp)";
 }
 
+// if free register null, put immediate to stack
+string RegisterAllocator::spillVar()
+{
+	int spillSlot = stackOffset - 4;
+	if (spillSlot < stackSize) extandStack();
+	stackOffset -= 4;
+
+	return std::to_string(stackOffset) + "(%rbp)";
+}
 // choose first var
 string RegisterAllocator::selectSpillCandidate()
 {
@@ -118,13 +150,16 @@ string RegisterAllocator::getVarInRegister(string reg)
 // return the new reg
 string RegisterAllocator::spillRegister(string var)
 {
+	vector<string> exclude;
 	if (varToReg.count(var))
 	{
 		string reg = varToReg[var];
 		freeRegs.push_back(reg);
+		varToReg.erase(var);
+		exclude.push_back(reg);
 	}
 
-	return allocReg(var);
+	return allocReg(var, exclude);
 }
 // binding a var to reg, if var is binding, return old reg
 string RegisterAllocator::allocReg(string var, string reg)
@@ -150,3 +185,32 @@ string RegisterAllocator::allocReg(string var, string reg)
 		return "";
 	}
 }
+
+void RegisterAllocator::extandStack()
+{
+	// TODO calculate need stack size
+	stackSize -= 16;
+	asmWriter.sub("$16", "%rsp", "q");
+}
+
+bool RegisterAllocator::haveFreeReg()
+{
+	if (freeRegs.size() == 0) return false;
+	return true;
+}
+
+string RegisterAllocator::getRandomTransitReg()
+{
+	vector<string> Regs = {"%rdi", "%rsi", "%rax", "%rbx", "%rcx", "%rdx",
+		"%r8","%r9", "%r10", "%r11", "%r12", "%r13", "%r14", "%r15"};
+	string key = "harmar";
+
+	srand(time(nullptr));
+	int salt = rand();
+
+	string salted = key + to_string(salt);
+	size_t index = hash<string>{}(salted) % Regs.size();
+
+	return Regs[index];
+}
+

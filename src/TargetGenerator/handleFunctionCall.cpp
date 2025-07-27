@@ -39,14 +39,20 @@ void TargetGenerator::handleMallocAt(vector<string> tokens)
 
 	addAsmLine(CallingConvention::addCallerSave());
 	addAsmLine("	movl	$" + size + ", %edi");
-	addAsmLine("	movl	$" + addr + ", %esi");
+	addAsmLine("	movl	$0x" + addr + ", %esi");
 	addAsmLine("	call	" + tokens[0]);
-	addAsmLine(CallingConvention::restoreCallerSave());
 
 	// process return value
 	string returnReg = tokens[2];
 	vector<string> exclude;
-	exclude.push_back("%rax");
+
+	// save return value, but not the caller save register,
+	// because they will be restore then.
+	for (auto& ex: CallingConvention::callerSaved)
+	{
+		exclude.push_back("%" + ex);
+	}
 	string realReg = registerAllocator.allocReg(returnReg, exclude);
 	addAsmLine("	movl	%eax, " + denormalizeReg(realReg, 32));
+	addAsmLine(CallingConvention::restoreCallerSave());
 }

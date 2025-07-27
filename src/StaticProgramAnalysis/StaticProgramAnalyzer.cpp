@@ -70,9 +70,3 @@ int StaticProgramAnalyzer::calculateFinalMemory()
 	return total_size_aligned;
 }
 
-// extend when stack size is not enough
-int StaticProgramAnalyzer::extendStackSize()
-{
-	// TODO
-	return 16; // default return min aligned stack size
-}
