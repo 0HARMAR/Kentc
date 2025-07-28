@@ -42,7 +42,7 @@ void AsmWriter::sub(const string& src, const string& dest, string bitWide)
 
 void AsmWriter::mul(const string& src, const string& dest, string bitWide)
 {
-	lines.push_back("	mul" + bitWide + "	" + src + ", " + dest);
+	lines.push_back("	imul" + bitWide + "	" + src + ", " + dest);
 }
 
 void AsmWriter::Xor(const string& src, const string& dest, string bitWide)

@@ -13,3 +13,11 @@ set int b = 100 at 0x300
 b = 2 * 3 + 20/2
 print b
 find b
+
+set int c = 200 at 0x400
+c = 2 + 3 * 3
+print c
+
+selector(c == 11) {
+    print
+}

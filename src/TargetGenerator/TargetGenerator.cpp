@@ -1,5 +1,9 @@
 //
 // Created by hemin on 25-7-16.
+// im tired..., i want die
+// hi,intel, i want you launch a new chip that
+// support mem to mem mov, no some reason, because i
+// actually need it... i must own it... it is my love...
 //
 
 #include "TargetGenerator.h"
@@ -72,9 +76,9 @@ void TargetGenerator::processStore(const vector<string>& tokens)
 		{
 			spilledTransitReg = registerAllocator.getRandomTransitReg();
 			asmWriter.push(spilledTransitReg);
-			asmWriter.mov(storeAddr, spilledTransitReg, "q");
-			storeAddr = "(" + spilledTransitReg + ")";
-		} else storeAddr = "(" + storeAddr + ")";
+			asmWriter.mov(storeAddr, denormalizeReg(spilledTransitReg, 32), "l");
+			storeAddr = "(" + denormalizeReg(spilledTransitReg, 32) + ")";
+		} else storeAddr = "(" + denormalizeReg(storeAddr, 32) + ")"; // 32 bit addr is enough
 	}
 
 	// e.g. storeValue : $0x5, %rax, -8(%rbp)
@@ -82,6 +86,7 @@ void TargetGenerator::processStore(const vector<string>& tokens)
 	if (value[0] == '%') // value is a temp register
 	{
 		storeValue = registerAllocator.getTempVarLocation(value);
+		if (storeValue[0] == '%') storeValue = denormalizeReg(storeValue, 32);
 	} else // value is an immediate
 	{
 		storeValue = "$0x" + value;
@@ -90,15 +95,17 @@ void TargetGenerator::processStore(const vector<string>& tokens)
 	// not allow mov mem to mem
 	if (isMemory(storeValue))
 	{
-		string spilledTransitReg = registerAllocator.getRandomTransitReg();
-		asmWriter.push(spilledTransitReg);
-		asmWriter.mov(storeValue, spilledTransitReg, "q");
-		asmWriter.mov(spilledTransitReg, storeAddr, "q");
-		asmWriter.pop(spilledTransitReg);
+		string spilledTransitReg_ = registerAllocator.getRandomTransitReg();
+		spilledTransitReg_ = denormalizeReg(spilledTransitReg_, 32);
+		asmWriter.push(normalizeReg(spilledTransitReg_)); // must push 64 bit for align
+		asmWriter.mov(storeValue, spilledTransitReg_, "l");
+		asmWriter.mov(spilledTransitReg_, storeAddr, "l");
+		asmWriter.pop(normalizeReg(spilledTransitReg_)); // must pop 64 bit
+		if (!spilledTransitReg.empty()) asmWriter.pop(spilledTransitReg);
 		return;
 	}
 
-	asmWriter.mov(storeValue, storeAddr, "q");
+	asmWriter.mov(storeValue, storeAddr, "l");
 	if (!spilledTransitReg.empty()) asmWriter.pop(spilledTransitReg);
 }
 
@@ -111,25 +118,38 @@ string TargetGenerator::processLoad(const vector<string>& tokens)
 	string destVar = trim(tokens[0]);
 	string srcAddr = trim(tokens[1]);
 
+	// e.g. loadValue : %rbx, -8(%rbp)
+	// first process loadValue, because it may
+	// involve stack extend and sub rsp
+	// thus influence push/pop sequence
+	string loadValue = registerAllocator.allocReg(destVar);
+	if (loadValue[0] == '%') loadValue = denormalizeReg(loadValue, 32);
+
 	// e.g. loadAddr : (%rax), (-8(%rbp))(not allow in syntax)
 	string loadAddr = registerAllocator.getTempVarLocation(srcAddr);
-	loadAddr = "(" + loadAddr + ")";
-
-	// e.g. loadValue : %rbx
-	string loadValue = registerAllocator.allocReg(destVar);
+	string spilledTransitReg = "";
+	if (isMemory(loadAddr))
+	{
+		spilledTransitReg = registerAllocator.getRandomTransitReg();
+		asmWriter.push(spilledTransitReg);
+		asmWriter.mov(loadAddr, denormalizeReg(spilledTransitReg, 32), "l");
+		loadAddr = "(" + denormalizeReg(spilledTransitReg, 32) + ")";
+	} else loadAddr = "(" + denormalizeReg(loadAddr, 32) + ")";
 
 	// not allow mov mem to mem
 	if (isMemory(loadValue))
 	{
-		string spilledTransitReg = registerAllocator.getRandomTransitReg();
-		asmWriter.push(spilledTransitReg);
-		asmWriter.mov(loadAddr, spilledTransitReg, "q");
-		asmWriter.mov(spilledTransitReg, loadValue, "q");
-		asmWriter.pop(spilledTransitReg);
+		string spilledTransitReg_ = registerAllocator.getRandomTransitReg();
+		asmWriter.push(spilledTransitReg_);
+		asmWriter.mov(loadAddr, denormalizeReg(spilledTransitReg_, 32), "l");
+		asmWriter.mov(denormalizeReg(spilledTransitReg_, 32), loadValue, "l");
+		asmWriter.pop(spilledTransitReg_);
+		if (!spilledTransitReg.empty()) asmWriter.pop(spilledTransitReg);
 		return "";
 	}
 
-	asmWriter.mov(loadAddr, loadValue, "q");
+	asmWriter.mov(loadAddr, loadValue, "l");
+	if (!spilledTransitReg.empty()) asmWriter.pop(spilledTransitReg);
 	return "";
 }
 
@@ -178,13 +198,36 @@ string TargetGenerator::processBinaryOp(const vector<string>& tokens)
 		{
 			if (isMemory(src1) && isMemory(resultReg))
 			{
-				asmWriter.movMemToMem(src1, resultReg, registerAllocator.getRandomTransitReg(), "q");
+				asmWriter.movMemToMem(src1, denormalizeReg(resultReg, 32),
+					denormalizeReg(registerAllocator.getRandomTransitReg(), 32), "l");
 			} else
 			{
-				addAsmLine("	movq	" + normalizeReg(src1) + ", " + resultReg);
+				addAsmLine("	movl	" + src1 + ", " + denormalizeReg(resultReg, 32));
 			}
 		}
-		else addAsmLine("	movq	" + src1 + ", " + resultReg);
+		else addAsmLine("	movl	" + src1 + ", " + denormalizeReg(resultReg, 32));
+		if (op == "mul" and isMemory(resultReg)) // mul dest could not be memory
+		{
+			string spilledTransitReg = registerAllocator.getRandomTransitReg();
+			asmWriter.push(spilledTransitReg);
+			asmWriter.mov(denormalizeReg(resultReg, 32), denormalizeReg(spilledTransitReg, 32), "l");
+			asmWriter.mul(src2, denormalizeReg(spilledTransitReg, 32), "l");
+			asmWriter.mov(denormalizeReg(spilledTransitReg, 32), denormalizeReg(resultReg, 32), "l");
+			asmWriter.pop(spilledTransitReg);
+			return "";
+		}
+		if (isMemory(src2) && isMemory(resultReg)) // two operand both mem? no,no
+			// let us make fuck transit
+		{
+			string spilledTransitReg = registerAllocator.getRandomTransitReg();
+			asmWriter.push(spilledTransitReg);
+			asmWriter.mov(denormalizeReg(resultReg, 32), denormalizeReg(spilledTransitReg, 32), "l");
+			if (op == "add") asmWriter.add(src2, denormalizeReg(spilledTransitReg, 32),  "l");
+			else if (op == "sub") asmWriter.sub(src2, denormalizeReg(spilledTransitReg, 32), "l");
+			asmWriter.mov(denormalizeReg(spilledTransitReg, 32), denormalizeReg(resultReg, 32), "l");
+			asmWriter.pop(spilledTransitReg);
+			return "";
+		}
 		addAsmLine("	" + opMap[op] + "	" + src2 + ", " + denormalizeReg(resultReg, 32));
 	}
 

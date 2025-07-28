@@ -201,16 +201,31 @@ bool RegisterAllocator::haveFreeReg()
 
 string RegisterAllocator::getRandomTransitReg()
 {
-	vector<string> Regs = {"%rdi", "%rsi", "%rax", "%rbx", "%rcx", "%rdx",
+	static vector<string> Regs = {"%rdi", "%rsi", "%rax", "%rbx", "%rcx", "%rdx",
 		"%r8","%r9", "%r10", "%r11", "%r12", "%r13", "%r14", "%r15"};
-	string key = "harmar";
+	static string lastReg;
 
-	srand(time(nullptr));
-	int salt = rand();
+	static bool seedInitialized = false;
+	if (!seedInitialized)
+	{
+		srand(time(nullptr));
+		seedInitialized = true;
+	}
 
-	string salted = key + to_string(salt);
-	size_t index = hash<string>{}(salted) % Regs.size();
+	string newReg;
+	do
+	{
+		string key = "harmar";
+		int salt = rand();
+		string salted = key + to_string(salt);
+		size_t index = hash<string>{}(salted) % Regs.size();
+		newReg = Regs[index];
 
-	return Regs[index];
+		if (lastReg.empty() || Regs.size() == 1) break;
+	} while (newReg == lastReg);
+
+	lastReg = newReg;
+	return newReg;
+
 }
 
