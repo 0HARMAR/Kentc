@@ -31,9 +31,13 @@ public:
 	void sub(const string& src, const string& dest, string bitWide);
 	void mul(const string& src, const string& dest, string bitWide);
 	void Xor(const string& src, const string& dest, string bitWide);
+	void cmp(const string& src, const string& dest, string bitWide);
+	void set(const string& dest, string condition);
 	void call(const string& target);
+	void label(const string& label);
 	void ret();
 	void syscall();
+	void jmp(const string& target, string condition = "");
 	void push(const string& reg);
 	void pop(const string& reg);
 	size_t size() const;

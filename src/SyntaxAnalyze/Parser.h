@@ -23,12 +23,12 @@ enum class StmtType
 
 enum class ExprType
 {
-    IDENTIFIER, LITERAL, BINARY_OP
+    IDENTIFIER, LITERAL, BINARY_OP, EQUALITY
 };
 
 enum class ValueType
 {
-    INT, ADDRESS
+    INT, ADDRESS, STRING
 };
 
 struct Identifier
@@ -44,13 +44,19 @@ struct ASTNode
 
 struct Literal : ASTNode
 {
-    std::variant<int, uintptr_t> value;
+    std::variant<int, uintptr_t, std::string> value;
     ValueType type;
 };
 
 struct BinaryExpr
 {
     char op;
+    std::shared_ptr<ASTNode> lhs;
+    std::shared_ptr<ASTNode> rhs;
+};
+
+struct EqualityExpr
+{
     std::shared_ptr<ASTNode> lhs;
     std::shared_ptr<ASTNode> rhs;
 };
@@ -88,13 +94,20 @@ struct MovNode : ASTNode
 struct ExprNode : ASTNode
 {
     ExprType exprType;
-    std::variant<Identifier,Literal,BinaryExpr> content;
+    std::variant<Identifier,Literal,BinaryExpr, EqualityExpr> content;
 };
 
 struct ProgramNode : ASTNode
 {
     std::vector<std::unique_ptr<ASTNode>> statements;
 };
+
+struct SelectorNode : ASTNode
+{
+    std::unique_ptr<ExprNode> conditionalExpr;
+    std::unique_ptr<ProgramNode> conditionalProgram;
+};
+
 
 class Parser {
 public:
@@ -113,14 +126,14 @@ private:
     std::unique_ptr<PrintNode> parsePrint();
     std::unique_ptr<FindNode> parseFind();
     std::unique_ptr<MovNode> parseMov();
+    std::unique_ptr<SelectorNode> parseSelector();
     std::unique_ptr<ExprNode> parseExpression();
+    std::unique_ptr<ExprNode> parseConditionalExpression();
     std::unique_ptr<ExprNode> parseAdditive();
     std::unique_ptr<ExprNode> parseMultiplicative();
     std::unique_ptr<ExprNode> parsePrimary();
     Token consume(TokenType expected,const std::string& error);
-    std::string getIndent(int indent, bool isLast);
     void printAddress(uintptr_t addr);
-    void printAST(const ASTNode* node, int depth, bool isLast = true);
     const std::vector<Token>& tokens_;
     size_t position_;
 };

@@ -12,9 +12,11 @@
 
 int main()
 {
-    // 打开v1.0.kent
-    std::ifstream src("../v1.0.kent");
-    if (!src) throw std::runtime_error("Could not open file v1.0.kent");
+    // 打开源文件
+	std::string srcPath;
+	srcPath = "../selector-test.kent";
+    std::ifstream src(srcPath);
+    if (!src) throw std::runtime_error("Could not open file " + srcPath);
     std::ostringstream buffer;
     buffer << src.rdbuf();
     std::string src_str = buffer.str();
@@ -31,6 +33,7 @@ int main()
         std::cout << "Token: " << token.lexeme
                   << ", Type: " << lexer.tokenTypeToString(token.type) << '\n';
     }
+	std::cout << std::endl;
 
 	// parser analyze
 	std::cout << "\033[32mParser analyze:\033[0m\n";

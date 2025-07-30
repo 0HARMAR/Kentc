@@ -56,7 +56,7 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 		if (tokens.empty()) continue;
 
 		// alloca instruction
-		if (tokens[2].find("alloca") != string::npos)
+		if (tokens.size() >= 3 and tokens[2].find("alloca") != string::npos)
 		{
 			vector<string> args;
 			args.push_back(tokens[0]);
@@ -71,14 +71,14 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 			args.push_back(tokens[4]);
 			processStore(args);
 		}
-		else if (tokens[2] == "load")
+		else if (tokens.size() >= 3 and tokens[2] == "load")
 		{
 			vector<string> args;
 			args.push_back(tokens[0]);
 			args.push_back(tokens[5]);
 			processLoad(args);
 		}
-		else if (opMap.find(tokens[2]) != opMap.end())
+		else if (tokens.size() >= 3 and opMap.find(tokens[2]) != opMap.end())
 		{
 			string result = *tokens.rbegin();
 			vector<string> args;
@@ -90,7 +90,7 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 
 			processBinaryOp(args);
 		}
-		else if (tokens[0] == "call" || tokens[1] == "call")  // call instruction
+		else if (tokens.size() >= 2 and (tokens[0] == "call" || tokens[1] == "call"))  // call instruction
 		{
 			vector<string> args;
 			auto it = find(tokens.begin(), tokens.end(), "call");
@@ -109,12 +109,34 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 			}
 			processCall(args);
 		}
-		else if (tokens[2] == "inttoptr")
+		else if (tokens.size() >= 3 and tokens[2] == "inttoptr")
 		{
 			vector<string> args;
 			args.push_back(tokens[0]);
 			args.push_back(tokens[4]);
 			processInttoptr(args);
+		}
+		else if (tokens.size() >= 3 and tokens[2] == "icmp")
+		{
+			vector<string> args;
+			args.push_back(tokens[0]);
+			args.push_back(tokens[3]);
+			args.push_back(tokens[4]);
+			args.push_back(tokens[5].substr(0, tokens[5].length() - 1));
+			args.push_back(tokens[6]);
+			processIcmp(args);
+		}
+		else if (tokens[0] == "br")
+		{
+			vector<string> args;
+			args.push_back(tokens[2].substr(0, tokens[2].length() - 1));
+			args.push_back(tokens[4].substr(0, tokens[4].length() - 1));
+			args.push_back(tokens[6].substr(1, tokens[6].length() - 1));
+			processBr(args);
+		}
+		else if (tokens[0].back() == ':') // is lable
+		{
+			asmWriter.label(tokens[0].substr(0, tokens[0].length() - 1));
 		}
 	}
 

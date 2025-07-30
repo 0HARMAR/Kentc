@@ -16,6 +16,8 @@ public:
 
 private:
 	std::string generateExpr(const json &expr,int &tempRegCount, std::string &ir);
+	std::vector<std::string> variables;
+	void parseStatements(const json &statement, std::string &outputIR);
 };
 
 

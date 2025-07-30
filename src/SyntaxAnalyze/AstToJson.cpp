@@ -61,6 +61,12 @@ json Parser::astToJson(const ASTNode* node)
 		}
 		j["dest"] = mov->destAddr;
 	}
+	else if (auto selector = dynamic_cast<const SelectorNode*>(node))
+	{
+		j["type"] = "Selector";
+		j["condition"] = astToJson(selector->conditionalExpr.get());
+		j["conditionBody"] = astToJson(selector->conditionalProgram.get());
+	}
 	else if (auto expr = dynamic_cast<const ExprNode*>(node))
 	{
 		if (auto id = std::get_if<Identifier>(&expr->content))
@@ -74,10 +80,14 @@ json Parser::astToJson(const ASTNode* node)
 			{
 				j["type"] = "Integer";
 				j["value"] = std::get<int>(lit->value);
-			} else
+			} else if (lit->type == ValueType::ADDRESS)
 			{
 				j["type"] = "Address";
 				j["value"] = std::get<uintptr_t>(lit->value);
+			} else if (lit->type == ValueType::STRING)
+			{
+				j["type"] = "String";
+				j["value"] = std::get<std::string>(lit->value);
 			}
 		}
 		else if (auto bin = std::get_if<BinaryExpr>(&expr->content))
@@ -86,6 +96,13 @@ json Parser::astToJson(const ASTNode* node)
 			j["operator"] = std::string(1,bin->op);
 			j["left"] = astToJson(bin->lhs.get());
 			j["right"] = astToJson(bin->rhs.get());
+		}
+		else if (auto eq = std::get_if<EqualityExpr>(&expr->content))
+		{
+			j["type"] = "EqualityExpr";
+			j["operator"] = "==";
+			j["left"] = astToJson(eq->lhs.get());
+			j["right"] = astToJson(eq->rhs.get());
 		}
 	}
 	else if (auto literal = dynamic_cast<const Literal*>(node))

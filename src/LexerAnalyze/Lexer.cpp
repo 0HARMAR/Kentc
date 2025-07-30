@@ -18,6 +18,40 @@ std::vector<Token> Lexer::tokenize()
             }
             pos++;
         }
+        else if (current == '"')
+        {
+            size_t start = pos;
+            pos++; // skip start quote
+            while (pos < input.size() && input[pos] != '"')
+            {
+                pos++;
+            }
+            if (pos < input.size())
+            {
+                tokens.push_back(Token(TokenType::STRING,
+                    input.substr(start + 1, pos - start - 1)));
+                pos++;
+            } else
+            {
+                tokens.push_back(Token(TokenType::STRING, input.substr(start + 1)));
+            }
+        }
+        else if (current == '\'')
+        {
+            size_t start = pos;
+            pos++; // skip start quote
+            if (pos < input.size() && input[pos] != '\'')
+            {
+                // extract content between single quotes
+                tokens.push_back(Token(TokenType::STRING,
+                    input.substr(pos, 1)));
+                pos++;
+            }
+            if (pos < input.size() && input[pos] == '\'')
+            {
+                pos++;
+            }
+        }
         else if (std::isalpha(static_cast<unsigned char>(current)))
         {
             lexIdentifier();
@@ -26,9 +60,39 @@ std::vector<Token> Lexer::tokenize()
         {
             lexNumber();
         }
+        // process = and ==
         else if (current == '=')
         {
-            tokens.push_back(Token(TokenType::EQUAL,"="));
+            // check if it's a single '=' or '=='
+            if (pos + 1 < input.size() && input[pos + 1] == '=')
+            {
+                tokens.push_back(Token(TokenType::EQUALITY, "=="));
+                pos += 2;
+            }
+            else
+            {
+                tokens.push_back(Token(TokenType::EQUAL,"="));
+                pos++;
+            }
+        }
+        else if (current == '(')
+        {
+            tokens.push_back(Token(TokenType::LEFT_PAREN, "("));
+            pos++;
+        }
+        else if (current == ')')
+        {
+            tokens.push_back(Token(TokenType::RIGHT_PAREN, ")"));
+            pos++;
+        }
+        else if (current == '{')
+        {
+            tokens.push_back(Token(TokenType::LEFT_BRACE, "{"));
+            pos++;
+        }
+        else if (current == '}')
+        {
+            tokens.push_back(Token(TokenType::RIGHT_BRACE, "}"));
             pos++;
         }
         else if (current == '+')
@@ -75,7 +139,7 @@ void Lexer::lexIdentifier()
         {"set",TokenType::SET}, {"int",TokenType::INT},
         {"print",TokenType::PRINT}, {"find",TokenType::FIND},
         {"mov",TokenType::MOV}, {"to",TokenType::TO},
-        {"at",TokenType::AT},
+        {"at",TokenType::AT}, {"selector", TokenType::SELECTOR}
     };
 
     auto it = keywords.find(word);
@@ -135,6 +199,15 @@ std::string Lexer::tokenTypeToString(TokenType type)
     case TokenType::MULTIPLY:   return "MULTIPLY";
     case TokenType::DIVIDE:     return "DIVIDE";
     case TokenType::NEWLINE:    return "NEWLINE";
+    case TokenType::EQUALITY:   return "EQUALITY";
+    case TokenType::IF:         return "IF";
+    case TokenType::LEFT_BRACE:  return "LEFT_BRACE";
+    case TokenType::RIGHT_BRACE: return "RIGHT_BRACE";
+    case TokenType::STRING:     return "STRING";
+    case TokenType::SELECTOR:   return "SELECTOR";
+    case TokenType::LEFT_PAREN: return "LEFT_PAREN";
+    case TokenType::RIGHT_PAREN: return "RIGHT_PAREN";
+    case TokenType::END: return "END";
     default:                    return "UNKNOWN";
     }
 }

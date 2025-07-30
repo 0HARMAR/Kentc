@@ -50,11 +50,27 @@ void AsmWriter::Xor(const string& src, const string& dest, string bitWide)
 	lines.push_back("	xor" + bitWide + "	" + src + ", " + dest);
 }
 
+void AsmWriter::cmp(const string& src, const string& dest, string bitWide)
+{
+	lines.push_back("	cmp" + bitWide + "	" + src + ", " + dest);
+}
+
+void AsmWriter::set(const string& dest, string condition)
+{
+	lines.push_back("	set" + condition + "	" + dest);
+}
+
 
 void AsmWriter::call(const string& target)
 {
 	lines.push_back("	call	" + target);
 }
+
+void AsmWriter::label(const string& label)
+{
+	lines.push_back(label + ":");
+}
+
 
 void AsmWriter::ret()
 {
@@ -64,6 +80,12 @@ void AsmWriter::ret()
 void AsmWriter::syscall()
 {
 	lines.push_back("	syscall");
+}
+
+void AsmWriter::jmp(const string& target, string condition)
+{
+	string j = condition.empty() ? "	jmp	" : "	j" + condition + "	";
+	lines.push_back(j + target);
 }
 
 void AsmWriter::push(const string& reg)

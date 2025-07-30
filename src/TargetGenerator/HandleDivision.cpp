@@ -95,12 +95,14 @@ string TargetGenerator::denormalizeReg(string reg, int bitWide)
 	if (reg[0] == '%')
 	{
 		string noBitPrefixReg = reg.substr(2);
+		// %r8 - %r15
 		if (isdigit(noBitPrefixReg[0]))
 		{
 			switch (bitWide)
 			{
 			case 32 : return reg + 'd';
 			case 16 : return reg + 'w';
+			case 8 : return reg + 'b';
 			}
 		}
 		else
@@ -109,6 +111,12 @@ string TargetGenerator::denormalizeReg(string reg, int bitWide)
 			{
 			case 32 : return "%e" + noBitPrefixReg;
 			case 16 : return "%" + noBitPrefixReg;
+			case 8 :
+				if (noBitPrefixReg == "ax") return "%al";
+				else if (noBitPrefixReg == "bx") return "%bl";
+				else if (noBitPrefixReg == "cx") return "%cl";
+				else if (noBitPrefixReg == "dx") return "%dl";
+				else return "%" + noBitPrefixReg + "l";
 			}
 		}
 	} else return reg;

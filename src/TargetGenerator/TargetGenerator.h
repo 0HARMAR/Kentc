@@ -45,6 +45,8 @@ public:
 	string processBinaryOp(const vector<string>& tokens);
 	void processCall(const vector<string>& tokens);
 	void processInttoptr(const vector<string>& tokens);
+	void processIcmp(const vector<string>& tokens);
+	void processBr(const vector<string>& tokens);
 	vector<string> convertIRToASM(const vector<string>& irLines);
 	void handleDivision(const string& dividend, const string& divisor, string& result);
 	void handlePrintInt(vector<string>);

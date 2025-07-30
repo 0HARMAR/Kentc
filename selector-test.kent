@@ -1,0 +1,9 @@
+set int c1 = 1 at 0x100
+
+selector(c1 == 1){
+print c1
+set int c2 = 2 at 0x200
+selector(c2 == 2){
+print c2
+}
+}

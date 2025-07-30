@@ -278,4 +278,28 @@ void TargetGenerator::processInttoptr(const vector<string>& tokens)
 	addAsmLine("	movl	$0x" + realAddr + ", " + denormalizeReg(Reg, 32));
 }
 
+void TargetGenerator::processIcmp(const vector<string>& tokens)
+{
+	string resultReg = tokens[0];
+	string op = tokens[1];
+	string op1Type = tokens[2];
+	string op1 = tokens[3];
+	string op2 = tokens[4];
+
+	string op1Reg = registerAllocator.getTempVarLocation(op1);
+	asmWriter.cmp("$" + op2, denormalizeReg(op1Reg, 32), "l");
+	string cmpResult = registerAllocator.allocReg(resultReg);
+	asmWriter.set(denormalizeReg(cmpResult, 8), "e");
+}
+
+void TargetGenerator::processBr(const vector<string>& tokens)
+{
+	string cmpResult = tokens[0];
+	string cmpResultReg = registerAllocator.getTempVarLocation(cmpResult);
+	string trueLabel = tokens[1];
+	string continueLabel = tokens[2];
+	asmWriter.cmp("$1", denormalizeReg(cmpResultReg, 8), "b");
+	asmWriter.jmp(continueLabel, "ne");
+}
+
 
