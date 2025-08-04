@@ -22,7 +22,7 @@ public:
 	string spillVar(string var);
 	string spillVar();
 	string selectSpillCandidate();
-	void freeReg(string var, bool lastUse=true);
+	void freeReg(string var);
 	string getTempVarLocation(string operand);
 	void handleCall();
 	string getVarInRegister(string reg);

@@ -9,12 +9,14 @@
 
 #include "TargetGenerator/TargetGenerator.h"
 #include "ExecutableGenerator/ExecutableGenerator.h"
+#include "CompileOptimise/Optimizer.h"
+#include "CompileOptimise/AssemblyParser.h"
 
 int main()
 {
     // 打开源文件
 	std::string srcPath;
-	srcPath = "../selector-test.kent";
+	srcPath = "../v1.0.kent";
     std::ifstream src(srcPath);
     if (!src) throw std::runtime_error("Could not open file " + srcPath);
     std::ostringstream buffer;
@@ -66,6 +68,14 @@ int main()
 	{
 		std::cout << line << std::endl;
 	}
+
+	// optimize
+	AssemblyParser assemblyParser;
+	Function main = assemblyParser.parse(ASMLines);
+	Optimizer optimizer(main);
+	Function mainOptimized = optimizer.optimize();
+	mainOptimized.print();
+	std::cout << std::endl;
 
 	// Executable generate
 	std::cout << "\033[35mExecutable generate:\033[0m\n";

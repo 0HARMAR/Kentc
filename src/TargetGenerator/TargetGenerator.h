@@ -15,19 +15,14 @@
 #include "CallingConvention.h"
 #include "AsmWriter.h"
 #include <stdint.h>
+#include "../../include/stringUtils.h"
+#include "../StaticProgramAnalysis/IRliveAnalyzor.h"
 using namespace std;
 struct Variable
 {
 	string name;
 	string type;
 	int stackOffset;
-};
-
-struct Instruction
-{
-	string op;
-	vector<string> operands;
-	string result;
 };
 
 extern "C" void* malloc_at(size_t size, size_t offset);
@@ -82,8 +77,10 @@ private:
 	// asm writer
 	AsmWriter asmWriter;
 
+	// ir live analyse
+	IRliveAnalyzor irLiveAnalyzer;
+
 	// assist func
-	string trim(const string& str);
 	string normalizeReg(string reg);
 	string denormalizeReg(string reg, int bitWide);
 	vector<string> parseCall(string callStr);

@@ -122,18 +122,13 @@ void RegisterAllocator::handleCall()
 	}
 }
 
-void RegisterAllocator::freeReg(string var, bool lastUse)
+void RegisterAllocator::freeReg(string var)
 {
 	if (varToReg.count(var))
 	{
 		string reg = varToReg[var];
 		freeRegs.push_back(reg);
 		varToReg.erase(var);
-		//
-		if (!lastUse && spilledVars.count(var))
-		{
-			// TODO generate asm code to reload the variable
-		}
 	}
 }
 

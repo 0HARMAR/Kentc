@@ -5,8 +5,9 @@
 #ifndef OPTIMIZER_H
 #define OPTIMIZER_H
 #include <map>
-
+#include <unordered_map>
 #include "Function.h"
+#include <optional>
 
 using namespace std;
 
@@ -15,8 +16,8 @@ private:
 	Function function;
 
 	// trace the const
-	map<pair<string, int>, long> mem_constants; // (base, offset) -> value
-	map<string, long> reg_constants; // reg -> value
+	map<pair<string, long>, long> mem_constants; // (base, offset) -> value
+	unordered_map<string, optional<long>> reg_constants; // reg -> value
 
 	// remove dead code
 	void dead_code_elimination(BasicBlock& block);

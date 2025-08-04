@@ -7,18 +7,9 @@
 //
 
 #include "TargetGenerator.h"
-
 #include <complex>
 
 TargetGenerator::TargetGenerator() : asmLines(), asmWriter(asmLines), registerAllocator(this->asmWriter){}
-
-string TargetGenerator::trim(const string& str)
-{
-	size_t first = str.find_first_not_of(' \t');
-	if (string::npos == first) return "";
-	size_t last = str.find_last_not_of(' \t');
-	return str.substr(first, (last - first + 1));
-}
 
 void TargetGenerator::addAsmLine(const string& line)
 {

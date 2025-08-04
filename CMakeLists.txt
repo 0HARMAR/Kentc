@@ -43,6 +43,10 @@ add_executable(kentc src/main.cpp
         src/TargetGenerator/handleFunctionCall.cpp
         src/TargetGenerator/asmWriter.cpp
         src/TargetGenerator/AsmWriter.h
+        src/StaticProgramAnalysis/IRliveAnalyzor.cpp
+        src/StaticProgramAnalysis/IRliveAnalyzor.h
+        src/utils/stringUtils.cpp
+        include/stringUtils.h
 )
 
 add_executable(malloc_test src/memoryAllocator/mallocTest.cpp

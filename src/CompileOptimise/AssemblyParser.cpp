@@ -8,11 +8,14 @@
 Function AssemblyParser::parse(const vector<string>& lines)
 {
 	Function func("main");
-	auto block = func.add_block("entry");
+	auto block = func.add_block("main");
 
 	for (const string& line : lines)
 	{
 		if (line.empty() || line[0] == '#') continue;
+
+		// skip pseudo-op
+		if (trim(line)[0] == '.') continue;
 
 		// process label
 		size_t colon_pos = line.find(':');
@@ -20,7 +23,8 @@ Function AssemblyParser::parse(const vector<string>& lines)
 			!isspace(line[colon_pos - 1]))
 		{
 			string label = line.substr(0, colon_pos);
-			block = func.add_block(label);
+			if (label == "main");
+			else block = func.add_block(label);
 			continue;
 		}
 
@@ -89,7 +93,9 @@ Function AssemblyParser::parse(const vector<string>& lines)
 				// find offset and base register
 				size_t pos1 = tok.find('(');
 				size_t pos2 = tok.find(')');
-				int disp = stoi(tok.substr(0, pos1));
+				int disp;
+				if (pos1 == 0) disp = 0;
+				else disp = stoi(tok.substr(0, pos1));
 				string base = tok.substr(pos1 + 2, pos2 - pos1 - 2);
 				op = Operand::create_memory(disp, base);
 

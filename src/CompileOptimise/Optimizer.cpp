@@ -4,6 +4,8 @@
 
 #include "Optimizer.h"
 
+#include <iostream>
+
 Optimizer::Optimizer(const Function& func) : function(func) {}
 
 Function Optimizer::optimize()
@@ -13,10 +15,13 @@ Function Optimizer::optimize()
 		BasicBlock& block = *block_ptr;
 
 		dead_code_elimination(block);
+		block.print(); std::cout << std::endl;
 		constant_propagation(block);
-		call_sequence_optimization(block);
-		peephole_optimization(block);
-		stack_optimization(block);
+		block.print(); std::cout << std::endl;
+		// call_sequence_optimization(block);
+		// block.print(); std::cout << std::endl;
+		// peephole_optimization(block);
+		// stack_optimization(block);
 	}
 
 	return function;

@@ -18,6 +18,3 @@ set int c = 200 at 0x400
 c = 2 + 3 * 3
 print c
 
-selector(c == 11) {
-    print
-}

@@ -1,3 +1,5 @@
+#include <complex>
+
 #include "TargetGenerator.h"
 
 vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
@@ -23,6 +25,24 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 	asmWriter.Xor("%r9", "%r9", "q");
 	asmWriter.syscall();
 
+	ostringstream ir_oss;
+	for (size_t i = 0; i < irLines.size(); ++i)
+	{
+		ir_oss << irLines[i] << endl;
+	}
+
+	map<string, pair<int, int>> liveRanges = irLiveAnalyzer.calculateLiveRanges(ir_oss.str());
+	for (const auto& range : liveRanges)
+	{
+		std::cout << "Rigister " << range.first
+		<< ": Def at " << range.second.first
+		<< ", Last use at " << range.second.second
+		<< ", Range [" << range.second.first
+		<< ", " << range.second.second << "]\n";
+	}
+	std::cout << std::endl;
+
+	int irEffectLineNum = 0;
 	for (const auto& line : irLines)
 	{
 		string trimmed = trim(line);
@@ -134,18 +154,26 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 			args.push_back(tokens[6].substr(1, tokens[6].length() - 1));
 			processBr(args);
 		}
-		else if (tokens[0].back() == ':') // is lable
+		else if (tokens[0].back() == ':') // is a label
 		{
 			asmWriter.label(tokens[0].substr(0, tokens[0].length() - 1));
 		}
+
+		for (const auto& range : liveRanges)
+		{
+			const string& tempRegName = range.first;
+			int end = range.second.second;
+
+			// free real reg
+			if (end == irEffectLineNum)
+			{
+				registerAllocator.freeReg(tempRegName);
+			}
+		}
+		irEffectLineNum++;
 	}
 
 	// calculate stack size and add asm suffix
-	ostringstream ir_oss;
-	for (size_t i = 0; i < irLines.size(); ++i)
-	{
-		ir_oss << irLines[i] << endl;
-	}
 
 	int stackAlloc = staticProgramAnalyzer.analyze(ir_oss.str());
 	asmLines.insert(asmLines.begin() + 11, "	subq	$" + to_string(stackAlloc) + ", %rsp");

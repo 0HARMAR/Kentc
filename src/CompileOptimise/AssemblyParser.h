@@ -8,6 +8,7 @@
 #include <iostream>
 #include <sstream>
 #include <algorithm>
+#include "../../include/stringUtils.h"
 using namespace std;
 
 class AssemblyParser {
