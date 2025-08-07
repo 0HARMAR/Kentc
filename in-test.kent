@@ -1,0 +1,7 @@
+set byte c1 = 0 at 0x200
+set byte c2 = 0 at 0x201
+
+in(2, 0x200)
+
+print c1
+print c2

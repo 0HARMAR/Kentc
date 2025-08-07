@@ -54,7 +54,8 @@ void TargetGenerator::processStore(const vector<string>& tokens)
 	// e.g. store i32 5, i32* %t1
 	string value = trim(tokens[0]);
 	value.pop_back();
-	string type = trim(tokens[1]);
+	string type_str = trim(tokens[1]);
+	int typeSize = stoi(type_str.substr(1, type_str.size() - 1));
 	string destVar = trim(tokens[2]);
 
 	// e.g. storeAddr : (%rax), (-8(%rbp))(not allow in syntax)
@@ -63,6 +64,7 @@ void TargetGenerator::processStore(const vector<string>& tokens)
 	if (destVar[0] == '%') // addr store in a temp register
 	{
 		storeAddr = registerAllocator.getTempVarLocation(destVar);
+		// memory access addr must 32 bit least
 		if (isMemory(storeAddr))
 		{
 			spilledTransitReg = registerAllocator.getRandomTransitReg();
@@ -77,10 +79,10 @@ void TargetGenerator::processStore(const vector<string>& tokens)
 	if (value[0] == '%') // value is a temp register
 	{
 		storeValue = registerAllocator.getTempVarLocation(value);
-		if (storeValue[0] == '%') storeValue = denormalizeReg(storeValue, 32);
+		if (storeValue[0] == '%') storeValue = denormalizeReg(storeValue, typeSize);
 	} else // value is an immediate
 	{
-		storeValue = "$0x" + value;
+		storeValue = "$" + value;
 	}
 
 	// not allow mov mem to mem
@@ -89,7 +91,7 @@ void TargetGenerator::processStore(const vector<string>& tokens)
 		string spilledTransitReg_ = registerAllocator.getRandomTransitReg();
 		spilledTransitReg_ = denormalizeReg(spilledTransitReg_, 32);
 		asmWriter.push(normalizeReg(spilledTransitReg_)); // must push 64 bit for align
-		asmWriter.mov(storeValue, spilledTransitReg_, "l");
+		asmWriter.mov(storeValue, formatReg(spilledTransitReg_, typeSize), bitWideToMovSubfix[typeSize]);
 		asmWriter.mov(spilledTransitReg_, storeAddr, "l");
 		asmWriter.pop(normalizeReg(spilledTransitReg_)); // must pop 64 bit
 		if (!spilledTransitReg.empty()) asmWriter.pop(spilledTransitReg);
@@ -102,19 +104,20 @@ void TargetGenerator::processStore(const vector<string>& tokens)
 
 string TargetGenerator::processLoad(const vector<string>& tokens)
 {
-	if (tokens.size() != 2) return "";
+	if (tokens.size() != 3) return "";
 
 	// pattern : [loadValue] = load i32, i32* [loadAddr]
 	// e.g. %t1 = load i32, i32* %b
 	string destVar = trim(tokens[0]);
-	string srcAddr = trim(tokens[1]);
+	int typeSize = stoi(trim(tokens[1]).substr(1, 2));
+	string srcAddr = trim(tokens[2]);
 
 	// e.g. loadValue : %rbx, -8(%rbp)
 	// first process loadValue, because it may
 	// involve stack extend and sub rsp
 	// thus influence push/pop sequence
 	string loadValue = registerAllocator.allocReg(destVar);
-	if (loadValue[0] == '%') loadValue = denormalizeReg(loadValue, 32);
+	if (loadValue[0] == '%') loadValue = denormalizeReg(loadValue, typeSize);
 
 	// e.g. loadAddr : (%rax), (-8(%rbp))(not allow in syntax)
 	string loadAddr = registerAllocator.getTempVarLocation(srcAddr);
@@ -133,13 +136,13 @@ string TargetGenerator::processLoad(const vector<string>& tokens)
 		string spilledTransitReg_ = registerAllocator.getRandomTransitReg();
 		asmWriter.push(spilledTransitReg_);
 		asmWriter.mov(loadAddr, denormalizeReg(spilledTransitReg_, 32), "l");
-		asmWriter.mov(denormalizeReg(spilledTransitReg_, 32), loadValue, "l");
+		asmWriter.mov(denormalizeReg(spilledTransitReg_, typeSize), loadValue, bitWideToMovSubfix[typeSize]);
 		asmWriter.pop(spilledTransitReg_);
 		if (!spilledTransitReg.empty()) asmWriter.pop(spilledTransitReg);
 		return "";
 	}
 
-	asmWriter.mov(loadAddr, loadValue, "l");
+	asmWriter.mov(loadAddr, formatReg(loadValue, typeSize), bitWideToMovSubfix[typeSize]);
 	if (!spilledTransitReg.empty()) asmWriter.pop(spilledTransitReg);
 	return "";
 }
@@ -250,6 +253,12 @@ void TargetGenerator::processCall(const vector<string>& tokens)
 	} else if (funcName == "free") {
 	} else if (funcName == "malloc_at") {
 		handleMallocAt(tokens);
+	} else if (funcName == "in")
+	{
+		handleIn(tokens);
+	} else if (funcName == "print_string")
+	{
+		handlePrintString(tokens);
 	}
 
 }

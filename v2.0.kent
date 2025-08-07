@@ -1,4 +1,4 @@
-set int a = 500 at 0x100
+  set int a = 500 at 0x100
 
 set int b = 1000 at 0x200
 
@@ -6,11 +6,11 @@ set int c = 1500 at 0x300
 c = a + b
 print "c is " + c
 
-set byte c1 = 0x0 at 0x401
-set byte c2 = 0x0 at 0x402
-set byte c3 = 0x0 at 0x403
-set byte c4 = 0x0 at 0x404
-set byte c5 = 0x0 at 0x405
+set byte c1 = 0 at 0x401
+set byte c2 = 0 at 0x402
+set byte c3 = 0 at 0x403
+set byte c4 = 0 at 0x404
+set byte c5 = 0 at 0x405
 in(5, 0x400)
 
 print c1 + c2 + c3 + c4 + c5

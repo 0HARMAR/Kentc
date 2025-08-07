@@ -15,6 +15,19 @@ void TargetGenerator::handlePrintInt(vector<string> tokens)
 	addAsmLine(CallingConvention::restoreCallerSave());
 }
 
+void TargetGenerator::handlePrintString(vector<string> tokens)
+{
+	string stringAddressTempReg = tokens[4];
+	string stringLength = tokens[6];
+
+	addAsmLine(CallingConvention::addCallerSave());
+	string stringAddressRealReg = registerAllocator.getTempVarLocation(stringAddressTempReg);
+	asmWriter.mov(stringAddressRealReg, "%rdi", "q");
+	asmWriter.mov("$" + stringLength, "%esi", "l");
+	asmWriter.call(tokens[0]);
+	addAsmLine(CallingConvention::restoreCallerSave());
+}
+
 void TargetGenerator::handleExit(vector<string> tokens)
 {
 	// first arg
@@ -56,3 +69,18 @@ void TargetGenerator::handleMallocAt(vector<string> tokens)
 	addAsmLine("	movl	%eax, " + denormalizeReg(realReg, 32));
 	addAsmLine(CallingConvention::restoreCallerSave());
 }
+
+void TargetGenerator::handleIn(vector<string> tokens)
+{
+	string inBytesNum = tokens[4];
+	string inAddress = tokens[6];
+	int inAddressInt = stoi(inAddress);
+	string realAddress = std::to_string(reinterpret_cast<uintptr_t>(malloc_at(1, inAddressInt)));
+
+	addAsmLine(CallingConvention::addCallerSave());
+	asmWriter.mov("$" + inBytesNum, "%edi", "l");
+	asmWriter.mov("$" + realAddress, "%esi", "l");
+	asmWriter.call(tokens[0]);
+	addAsmLine(CallingConvention::restoreCallerSave());
+}
+

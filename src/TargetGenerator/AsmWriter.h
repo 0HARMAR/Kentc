@@ -32,6 +32,7 @@ public:
 	void mul(const string& src, const string& dest, string bitWide);
 	void Xor(const string& src, const string& dest, string bitWide);
 	void cmp(const string& src, const string& dest, string bitWide);
+	void lea(const string& src, const string& dest, string bitWide);
 	void set(const string& dest, string condition);
 	void call(const string& target);
 	void label(const string& label);

@@ -60,6 +60,11 @@ void AsmWriter::set(const string& dest, string condition)
 	lines.push_back("	set" + condition + "	" + dest);
 }
 
+void AsmWriter::lea(const string& src, const string& dest, string bitWide)
+{
+	lines.push_back("	lea" + bitWide + "	" + src + ", " + dest);
+}
+
 
 void AsmWriter::call(const string& target)
 {

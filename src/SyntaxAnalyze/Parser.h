@@ -28,7 +28,7 @@ enum class ExprType
 
 enum class ValueType
 {
-    INT, ADDRESS, STRING
+    INT, ADDRESS, STRING, BYTE
 };
 
 struct Identifier
@@ -108,6 +108,17 @@ struct SelectorNode : ASTNode
     std::unique_ptr<ProgramNode> conditionalProgram;
 };
 
+struct InNode : ASTNode
+{
+    int inBytesNum;
+    std::string inAddress;
+};
+
+struct PrintableNode : ASTNode
+{
+    std::vector<std::variant<std::string, Identifier>> printableTokens;
+};
+
 
 class Parser {
 public:
@@ -127,12 +138,14 @@ private:
     std::unique_ptr<FindNode> parseFind();
     std::unique_ptr<MovNode> parseMov();
     std::unique_ptr<SelectorNode> parseSelector();
+    std::unique_ptr<InNode> parseIn();
     std::unique_ptr<ExprNode> parseExpression();
     std::unique_ptr<ExprNode> parseConditionalExpression();
     std::unique_ptr<ExprNode> parseAdditive();
     std::unique_ptr<ExprNode> parseMultiplicative();
     std::unique_ptr<ExprNode> parsePrimary();
     Token consume(TokenType expected,const std::string& error);
+    Token consume();
     void printAddress(uintptr_t addr);
     const std::vector<Token>& tokens_;
     size_t position_;

@@ -19,7 +19,11 @@ json Parser::astToJson(const ASTNode* node)
 	else if (auto decl = dynamic_cast<const DeclNode*>(node))
 	{
 		j["type"] = "Declaration";
-		j["varType"] = (decl->varType == ValueType::INT) ? "int" : "addr";
+		std::string varType;
+		if (decl->varType == ValueType::INT) varType = "int";
+		else if (decl->varType == ValueType::BYTE) varType = "byte";
+
+		j["varType"] = varType;
 		j["identifier"] = decl->identifier;
 		j["address"] = decl->address;
 		if (decl->initValue)
@@ -67,6 +71,12 @@ json Parser::astToJson(const ASTNode* node)
 		j["condition"] = astToJson(selector->conditionalExpr.get());
 		j["conditionBody"] = astToJson(selector->conditionalProgram.get());
 	}
+	else if (auto in = dynamic_cast<const InNode*>(node))
+	{
+		j["type"] = "In";
+		j["inBytesNum"] = std::to_string(in->inBytesNum);
+		j["inAddress"] = in->inAddress;
+	}
 	else if (auto expr = dynamic_cast<const ExprNode*>(node))
 	{
 		if (auto id = std::get_if<Identifier>(&expr->content))
@@ -111,10 +121,33 @@ json Parser::astToJson(const ASTNode* node)
 		{
 			j["type"] = "Integer";
 			j["value"] = std::get<int>(literal->value);
-		} else
+		} else if (literal->type == ValueType::STRING)
+		{
+			j["type"] = "String";
+			j["value"] = std::get<std::string>(literal->value);
+		} else if (literal->type == ValueType::ADDRESS)
 		{
 			j["type"] = "Address";
 			j["value"] = std::get<uintptr_t>(literal->value);
+		}
+	}
+	else if (auto printableNode = dynamic_cast<const PrintableNode*>(node))
+	{
+		int index = 0;
+		for (auto printable : printableNode->printableTokens)
+		{
+			json item;
+			if (std::holds_alternative<std::string>(printable))
+			{
+				item["value"] = std::get<std::string>(printable);
+				item["type"] = "String";
+			} else if (std::holds_alternative<Identifier>(printable))
+			{
+				item["name"] = std::get<Identifier>(printable).name;
+				item["type"] = "Identifier";
+			}
+			j[std::to_string(index)] = item;
+			index++;
 		}
 	}
 	else

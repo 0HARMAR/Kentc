@@ -36,10 +36,13 @@ void TargetGenerator::handleDivision(const string& dividend, const string& divis
 		if (dividend[0] == '$') // dividend is an immediate
 		{
 			addAsmLine("	movl	" + dividend + ", " + "%eax");
-		} else // dividend is a temp var
+		} else if (dividend.substr(0, 2) == "%t") // dividend is a temp var
 		{
 			string old_reg = registerAllocator.allocReg(dividend, normalizeReg("%eax"));
 			addAsmLine("	movl	" + denormalizeReg(old_reg, 32) + ", %eax");
+		} else
+		{
+			asmWriter.mov(dividend, "%eax", "l");
 		}
 	}
 

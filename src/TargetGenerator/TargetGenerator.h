@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include "../../include/stringUtils.h"
 #include "../StaticProgramAnalysis/IRliveAnalyzor.h"
+#include <regex>
 using namespace std;
 struct Variable
 {
@@ -42,11 +43,15 @@ public:
 	void processInttoptr(const vector<string>& tokens);
 	void processIcmp(const vector<string>& tokens);
 	void processBr(const vector<string>& tokens);
+	void processString(const vector<string>& tokens);
+	void processGetElementPtr(const vector<string>& tokens);
 	vector<string> convertIRToASM(const vector<string>& irLines);
 	void handleDivision(const string& dividend, const string& divisor, string& result);
 	void handlePrintInt(vector<string>);
 	void handleExit(vector<string>);
 	void handleMallocAt(vector<string>);
+	void handleIn(vector<string>);
+	void handlePrintString(vector<string>);
 private:
 	// program state
 	vector<string> asmLines;
@@ -54,6 +59,17 @@ private:
 	int stackSize = 0;
 	int maxStackOffset = 0;
 	int nextTempVar = 0;
+
+	// rodata section index
+	int sectionIndex = 2;
+
+	// bit wide -> mov subfix
+	map<int, string> bitWideToMovSubfix = {
+		{8, "b"},
+		{16, "w"},
+		{32, "l"},
+		{64, "q"}
+	};
 
 	// var map
 	map<string, int> variableMap = {
@@ -67,6 +83,10 @@ private:
 		{"mul", "imull"},
 		{"sdiv", "idivl"},
 	};
+
+	// string table
+	// name -> (length, content)
+	map<string, pair<int, string>> stringTable;
 
 	// register allocator
 	RegisterAllocator registerAllocator;
@@ -83,7 +103,9 @@ private:
 	// assist func
 	string normalizeReg(string reg);
 	string denormalizeReg(string reg, int bitWide);
+	string formatReg(string reg, int bitWide);
 	vector<string> parseCall(string callStr);
+	vector<string> parseString(string str);
 	bool isMemory(string op);
 };
 

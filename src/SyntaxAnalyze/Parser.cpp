@@ -32,6 +32,10 @@ std::unique_ptr<ProgramNode> Parser::parse()
         {
             program->statements.push_back(std::unique_ptr<ASTNode>(parseSelector().release()));
         }
+        else if (match(TokenType::IN))
+        {
+            program->statements.push_back(parseIn());
+        }
         else if (peek().type == TokenType::IDENTIFIER)
         {
             position_++;
@@ -71,20 +75,23 @@ std::unique_ptr<DeclNode> Parser::parseDeclaration()
 {
     auto decl = std::make_unique<DeclNode>();
 
-    if (!match(TokenType::INT))
+    Token varType = consume();
+    if (varType.type != TokenType::INT && varType.type != TokenType::BYTE)
     {
         throw std::runtime_error("Expected type specifier");
     }
 
+    if (varType.type == TokenType::INT) decl->varType = ValueType::INT;
+    else if (varType.type == TokenType::BYTE) decl->varType = ValueType::BYTE;
+
     Token id = consume(TokenType::IDENTIFIER, "Expected identifier");
     decl->identifier = id.lexeme;
-    decl->varType = ValueType::INT;
 
     consume(TokenType::EQUAL, "Expected '=' after identifier");
     decl->initValue = parseLiteral();
 
     consume(TokenType::AT, "Expected 'at' keyword");
-    uintptr_t addr = std::stoul(consume(TokenType::HEXADDRESS, "Expected address").lexeme, 0, 16);
+    uintptr_t addr = stoi(consume(TokenType::HEXADDRESS, "Expected address").lexeme.substr(2, 3));
     decl->address = addr;
 
     return decl;
@@ -92,12 +99,23 @@ std::unique_ptr<DeclNode> Parser::parseDeclaration()
 
 std::unique_ptr<Literal> Parser::parseLiteral()
 {
-    Token initValue = consume(TokenType::NUMBER, "Expected integer");
+    Token initValue = consume();
+    std::variant<int, uintptr_t, std::string> value;
+    ValueType type;
     std::string value_str = initValue.lexeme;
-    int value_int = std::stoi(value_str);
+    if (initValue.type == TokenType::NUMBER)
+    {
+        type = ValueType::INT;
+        int value_int = std::stoi(value_str);
+        value = value_int;
+    } else if (initValue.type == TokenType::STRING)
+    {
+        type = ValueType::STRING;
+        value = value_str;
+    }
     auto literal = std::make_unique<Literal>();
-    literal->value = value_int;
-    literal->type = ValueType::INT;
+    literal->value = value;
+    literal->type = type;
     return literal;
 }
 
@@ -116,7 +134,17 @@ std::unique_ptr<AssignNode> Parser::parseAssignment()
 std::unique_ptr<PrintNode> Parser::parsePrint()
 {
     auto print = std::make_unique<PrintNode>();
-    print->expr = parseExpression();
+    auto printableNode = std::make_unique<PrintableNode>();
+    while (true)
+    {
+        Token printable = consume();
+        if (printable.type == TokenType::NEWLINE || printable.type == TokenType::END) break;
+        if (printable.type == TokenType::PLUS) continue;
+        if (printable.type == TokenType::STRING) printableNode->printableTokens.push_back(printable.lexeme);
+        else if (printable.type == TokenType::IDENTIFIER)
+            printableNode->printableTokens.push_back(Identifier{ printable.lexeme });
+    }
+    print->expr = std::move(printableNode);
     return print;
 }
 
@@ -147,6 +175,18 @@ std::unique_ptr<SelectorNode> Parser::parseSelector()
     selector->conditionalProgram = std::move(conditionalBody);
     return selector;
 }
+
+std::unique_ptr<InNode> Parser::parseIn()
+{
+    consume(TokenType::LEFT_PAREN, "expect '(' after in");
+    Token inBytesNum = consume();
+    Token inAddress = consume();
+    auto inNode = std::make_unique<InNode>();
+    inNode->inBytesNum = stoi(inBytesNum.lexeme);
+    inNode->inAddress = inAddress.lexeme.substr(2, inAddress.lexeme.length() - 2);
+    return inNode;
+}
+
 
 std::unique_ptr<ExprNode> Parser::parseConditionalExpression()
 {
@@ -253,6 +293,13 @@ Token Parser::consume(TokenType expected, const std::string& error) {
         return tokens_[position_++];
     }
     throw std::runtime_error(error);
+}
+
+Token Parser::consume()
+{
+    if (position_ < tokens_.size()) {
+        return tokens_[position_++];
+    }
 }
 
 

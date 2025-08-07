@@ -1,0 +1,9 @@
+set int a = 40 at 0x100
+
+set int b = 2 at 0x200
+
+set int c = 3 at 0x300
+
+c = c * b + a / 2 - 1
+
+print c

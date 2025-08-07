@@ -120,6 +120,7 @@ std::vector<Token> Lexer::tokenize()
             pos++;
         }
     }
+    tokens.push_back(Token(TokenType::END, "eof"));
     return tokens;
 }
 
@@ -139,7 +140,8 @@ void Lexer::lexIdentifier()
         {"set",TokenType::SET}, {"int",TokenType::INT},
         {"print",TokenType::PRINT}, {"find",TokenType::FIND},
         {"mov",TokenType::MOV}, {"to",TokenType::TO},
-        {"at",TokenType::AT}, {"selector", TokenType::SELECTOR}
+        {"at",TokenType::AT}, {"selector", TokenType::SELECTOR},
+        {"byte", TokenType::BYTE}, {"in", TokenType::IN}
     };
 
     auto it = keywords.find(word);
@@ -208,6 +210,8 @@ std::string Lexer::tokenTypeToString(TokenType type)
     case TokenType::LEFT_PAREN: return "LEFT_PAREN";
     case TokenType::RIGHT_PAREN: return "RIGHT_PAREN";
     case TokenType::END: return "END";
+    case TokenType::BYTE: return "BYTE";
+    case TokenType::IN: return "IN";
     default:                    return "UNKNOWN";
     }
 }

@@ -47,6 +47,9 @@ add_executable(kentc src/main.cpp
         src/StaticProgramAnalysis/IRliveAnalyzor.h
         src/utils/stringUtils.cpp
         include/stringUtils.h
+        src/TargetGenerator/formatReg.cpp
+        src/TargetGenerator/parseString.cpp
+        src/TargetGenerator/processGetElementPtr.cpp
 )
 
 add_executable(malloc_test src/memoryAllocator/mallocTest.cpp

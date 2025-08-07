@@ -10,14 +10,22 @@
 
 using json = nlohmann::json;
 
+struct variable
+{
+	std::string name;
+	std::string type;
+};
+
 class IRGenerator {
 public:
 	void generateIR(const json &program, std::string &outputIR);
 
 private:
 	std::string generateExpr(const json &expr,int &tempRegCount, std::string &ir);
-	std::vector<std::string> variables;
+	std::vector<variable> variables;
 	void parseStatements(const json &statement, std::string &outputIR);
+
+	int index = 0;
 };
 
 

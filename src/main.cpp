@@ -16,7 +16,7 @@ int main()
 {
     // 打开源文件
 	std::string srcPath;
-	srcPath = "../v1.0.kent";
+	srcPath = "../print-string.kent";
     std::ifstream src(srcPath);
     if (!src) throw std::runtime_error("Could not open file " + srcPath);
     std::ostringstream buffer;
@@ -70,12 +70,12 @@ int main()
 	}
 
 	// optimize
-	AssemblyParser assemblyParser;
-	Function main = assemblyParser.parse(ASMLines);
-	Optimizer optimizer(main);
-	Function mainOptimized = optimizer.optimize();
-	mainOptimized.print();
-	std::cout << std::endl;
+	// AssemblyParser assemblyParser;
+	// Function main = assemblyParser.parse(ASMLines);
+	// Optimizer optimizer(main);
+	// Function mainOptimized = optimizer.optimize();
+	// mainOptimized.print();
+	// std::cout << std::endl;
 
 	// Executable generate
 	std::cout << "\033[35mExecutable generate:\033[0m\n";

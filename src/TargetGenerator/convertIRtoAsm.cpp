@@ -4,18 +4,31 @@
 
 vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 {
+	ostringstream ir_oss;
+	for (size_t i = 0; i < irLines.size(); ++i)
+	{
+		ir_oss << irLines[i] << endl;
+	}
+
 	// add asm prefix
 	addAsmLine("#Generated AT&T assembly from LLVM IR");
+	addAsmLine("	.section .rodata");
 	addAsmLine("	.text");
 	addAsmLine("	.global	main");
 	addAsmLine("	.type	main, @function");
 	addAsmLine("	.extern	print_int");
 	addAsmLine("	.extern	exit");
 	addAsmLine("	.extern malloc_at");
+	addAsmLine("	.extern in");
 	addAsmLine("");
 	addAsmLine("main:");
 	addAsmLine("	pushq	%rbp");
 	addAsmLine("	movq	%rsp, %rbp");
+
+	// calculate stack size and add asm suffix
+	int stackAlloc = staticProgramAnalyzer.analyze(ir_oss.str());
+	asmWriter.sub("$" + std::to_string(stackAlloc), "%rsp", "q");
+
 	asmWriter.mov("$9", "%rax", "q");
 	asmWriter.mov("$0x600000", "%rdi", "q");
 	asmWriter.mov("$0x1000000", "%rsi", "q");
@@ -24,12 +37,6 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 	asmWriter.Xor("%r8", "%r8", "q");
 	asmWriter.Xor("%r9", "%r9", "q");
 	asmWriter.syscall();
-
-	ostringstream ir_oss;
-	for (size_t i = 0; i < irLines.size(); ++i)
-	{
-		ir_oss << irLines[i] << endl;
-	}
 
 	map<string, pair<int, int>> liveRanges = irLiveAnalyzer.calculateLiveRanges(ir_oss.str());
 	for (const auto& range : liveRanges)
@@ -75,6 +82,11 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 
 		if (tokens.empty()) continue;
 
+		if (tokens[0][0] == '@') // string define
+		{
+			tokens = parseString(trimmed);
+			processString(tokens);
+		}
 		// alloca instruction
 		if (tokens.size() >= 3 and tokens[2].find("alloca") != string::npos)
 		{
@@ -95,6 +107,7 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 		{
 			vector<string> args;
 			args.push_back(tokens[0]);
+			args.push_back(tokens[3]);
 			args.push_back(tokens[5]);
 			processLoad(args);
 		}
@@ -158,6 +171,13 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 		{
 			asmWriter.label(tokens[0].substr(0, tokens[0].length() - 1));
 		}
+		else if (tokens[2] == "getelementptr" && tokens.size() >= 3)
+		{
+			vector<string> args;
+			args.push_back(tokens[0]);
+			args.push_back(tokens[9].substr(1, tokens[9].length() - 2));
+			processGetElementPtr(args);
+		}
 
 		for (const auto& range : liveRanges)
 		{
@@ -172,11 +192,6 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 		}
 		irEffectLineNum++;
 	}
-
-	// calculate stack size and add asm suffix
-
-	int stackAlloc = staticProgramAnalyzer.analyze(ir_oss.str());
-	asmLines.insert(asmLines.begin() + 11, "	subq	$" + to_string(stackAlloc) + ", %rsp");
 
 	addAsmLine("");
 	addAsmLine("	.section	.note.GNU-stack,\"\",@progbits");

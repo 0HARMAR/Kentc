@@ -19,7 +19,13 @@ void IRGenerator::generateIR(const json &program, std::string &outputIR)
 	// for memory alloc
 	outputIR += "declare i8* @malloc(i64)\n";
 	outputIR += "declare i8* @malloc_at(i64, i64)\n";
-	outputIR += "declare void @free(i8*)\n\n";
+	outputIR += "declare void @free(i8*)\n";
+
+	// for system stdin
+	outputIR += "declare void @in(i32, i32)\n";
+
+	// for print string
+	outputIR += "declare void @print_string(i8*, i32)\n\n";
 
 	outputIR += "define i32 @main() {\n";
 
@@ -44,15 +50,20 @@ void IRGenerator::parseStatements(const json& program, std::string& outputIR)
 		{
 			// malloc and init
 			std::string varName = stmt["identifier"];
-			variables.push_back(varName);
+			std::string varType = stmt["varType"];
+			variables.push_back(variable{varName, varType});
+			std::string typeSize;
+			if (varType == "int") typeSize = "32";
+			else if (varType == "byte") typeSize = "8";
+
 			std::string varAddr = std::to_string(stmt["address"].get<int>());
-			outputIR += "	%" + varName + " = call i8* @malloc_at(i64 " + std::to_string(4) + ", i64 "
+			outputIR += "	%" + varName + " = call i" + typeSize + "* @malloc_at(i64 " + std::to_string(4) + ", i64 "
 			+ varAddr + ")\n";
 
 			std::string irExpr;
 			std::string value = generateExpr(stmt["initValue"],tempRegCount,irExpr);
 			outputIR += irExpr;
-			outputIR += "	store i32 " + value + ", i32* %" + varName + "\n";
+			outputIR += "	store i" + typeSize + " " + value + ", i" + typeSize + "* %" + varName + "\n";
 		}
 
 		else if (type == "Assignment")
@@ -67,9 +78,31 @@ void IRGenerator::parseStatements(const json& program, std::string& outputIR)
 		else if (type == "Print")
 		{
 			std::string irExpr;
-			std::string value = generateExpr(stmt["expression"],tempRegCount,irExpr);
-			outputIR += irExpr;
-			outputIR += "	call void @print_int(i32 " + value + ")\n";
+			std::string stringValue;
+			for (const auto& [key, value] : stmt["expression"].items())
+			{
+				if (value["type"] == "String")
+				{
+					stringValue = value["value"];
+					int length = stringValue.length() + 1; // include \0
+					outputIR = "@str" + std::to_string(index) + " = constant [" + std::to_string(length)
+					+ " x i8] c\"" + stringValue + "\\00\"\n"
+					+ outputIR;
+					std::string stringTempReg = "%t" + std::to_string(tempRegCount++);
+					outputIR += "\t" + stringTempReg + " = getelementptr [" + std::to_string(length)
+					+ " x i8], [" + std::to_string(length) + " x i8]* @str" + std::to_string(index)
+					+", i32 0, i32, 0\n";
+					outputIR += "	call void @print_string(i8* " + stringTempReg
+					+ ", i32 " + std::to_string(length) + ")\n";
+					index++;
+				}
+				else if (value["type"] == "Identifier")
+				{
+					std::string tempReg = generateExpr(value, tempRegCount, irExpr);
+					outputIR += irExpr;
+					outputIR += "	call void @print_int(i32 " + tempReg + ")\n";
+				}
+			}
 		}
 
 		else if (type == "Find")
@@ -106,6 +139,13 @@ void IRGenerator::parseStatements(const json& program, std::string& outputIR)
 			parseStatements(stmt["conditionBody"], outputIR);
 			outputIR += continueLabel.substr(1, continueLabel.length() - 1) + ":\n";
 		}
+		else if (type == "In")
+		{
+			std::string inBytesNum = stmt["inBytesNum"];
+			std::string inAddress = stmt["inAddress"];
+			inAddress = std::to_string(std::stoul(inAddress, nullptr, 16));
+			outputIR += "	call void @in(i32 " + inBytesNum + ", i32 " + inAddress + ")\n";
+		}
 	}
 }
 
@@ -116,11 +156,30 @@ std::string IRGenerator::generateExpr(const json &expr,
 	{
 		return std::to_string(expr["value"].get<int>());
 	}
+	if (expr["type"] == "String")
+	{
+		std::string initValue = expr["value"];
+		char initValue_char = initValue[0];
+		int initValue_char_int = static_cast<int> (initValue_char);
+		std::stringstream ss;
+		ss << std::hex << initValue_char_int;
+		std::string initValue_hex = ss.str();
+		return initValue_hex;
+	}
 	if (expr["type"] == "Identifier")
 	{
 		std::string varName = expr["name"];
+		std::string varType;
+		for (auto var : variables)
+		{
+			if (var.name == varName) varType = var.type;
+		}
+		std::string typeSize;
+		if (varType == "int") typeSize = "32";
+		else if (varType == "byte") typeSize = "8";
+
 		std::string tempReg = "%t" + std::to_string(tempRegCount++);
-		ir += "	" + tempReg + " = load i32, i32* " + "%" + varName + "\n";
+		ir += "	" + tempReg + " = load i" + typeSize + ", i" + typeSize + "* " + "%" + varName + "\n";
 		return tempReg;
 	}
 	if (expr["type"] == "BinaryExpr")
