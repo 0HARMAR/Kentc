@@ -10,6 +10,9 @@ int tempRegCount = 1;
 // condition label num
 int conditionLabelNum = 0;
 
+// looper label num
+int looperLabelNum = 0;
+
 void IRGenerator::generateIR(const json &program, std::string &outputIR)
 {
 	// add LLVM header decl
@@ -146,6 +149,34 @@ void IRGenerator::parseStatements(const json& program, std::string& outputIR)
 			inAddress = std::to_string(std::stoul(inAddress, nullptr, 16));
 			outputIR += "	call void @in(i32 " + inBytesNum + ", i32 " + inAddress + ")\n";
 		}
+		else if (type == "Looper")
+		{
+			std::string looperTimes = std::to_string(stmt["looperTimes"].get<int>());
+			std::string tempReg = "%t" + std::to_string(tempRegCount++);
+
+			// reset looperTimes temp reg
+			outputIR += "	" + tempReg + " = alloca i32\n";
+			outputIR += "	store i32 0, i32* " + tempReg + "\n";
+
+			std::string looperLabel = "%lopper" + std::to_string(looperLabelNum);
+			outputIR += looperLabel.substr(1, looperLabel.length() - 1) + ":\n";
+			parseStatements(stmt["looperBody"], outputIR);
+			std::string looperTimesLoadResult = "%t" + std::to_string(tempRegCount++);
+			std::string looperTempReg = "%t" + std::to_string(tempRegCount++);
+
+			// looperTimes = looperTimes + 1
+			outputIR += "	" + looperTimesLoadResult + " = load i32, i32* "  + tempReg + "\n";
+			outputIR += "	" + looperTempReg + " = add i32 " + looperTimesLoadResult + ", 1\n";
+			outputIR += "	store i32 " + looperTempReg + ", i32* " + tempReg + "\n";
+			std::string cmpResultTempReg = "%t" + std::to_string(tempRegCount++);
+
+			outputIR += "	" + cmpResultTempReg + " = icmp eq i32 " + looperTempReg + ", " + looperTimes + "\n";
+
+			std::string looperEnd = "%end" + std::to_string(looperLabelNum);
+			outputIR += "	br i1 " + cmpResultTempReg + ", label " + looperEnd
+			+ ", label " + looperLabel + "\n";
+			outputIR += looperEnd.substr(1, looperEnd.length() - 1) + ":\n";
+		}
 	}
 }
 
@@ -189,7 +220,7 @@ std::string IRGenerator::generateExpr(const json &expr,
 		std::string op = expr["operator"];
 		std::string resultReg = "%t" + std::to_string(tempRegCount++);
 
-		if (op == "+") ir += "  " + resultReg + " = add i32 " + left + ", " + right + "\n";
+		if (op == "+") ir += "	" + resultReg + " = add i32 " + left + ", " + right + "\n";
 		else if (op == "-") ir += "  " + resultReg + " = sub i32 " + left + ", " + right + "\n";
 		else if (op == "*") ir += "  " + resultReg + " = mul i32 " + left + ", " + right + "\n";
 		else if (op == "/") ir += "  " + resultReg + " = sdiv i32 " + left + ", " + right + "\n";

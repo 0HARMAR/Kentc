@@ -119,6 +119,12 @@ struct PrintableNode : ASTNode
     std::vector<std::variant<std::string, Identifier>> printableTokens;
 };
 
+struct LooperNode : ASTNode
+{
+    int looperTimes;
+    std::unique_ptr<ProgramNode> looperBody;
+};
+
 
 class Parser {
 public:
@@ -139,6 +145,7 @@ private:
     std::unique_ptr<MovNode> parseMov();
     std::unique_ptr<SelectorNode> parseSelector();
     std::unique_ptr<InNode> parseIn();
+    std::unique_ptr<LooperNode> parseLooper();
     std::unique_ptr<ExprNode> parseExpression();
     std::unique_ptr<ExprNode> parseConditionalExpression();
     std::unique_ptr<ExprNode> parseAdditive();

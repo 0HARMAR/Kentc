@@ -141,7 +141,8 @@ void Lexer::lexIdentifier()
         {"print",TokenType::PRINT}, {"find",TokenType::FIND},
         {"mov",TokenType::MOV}, {"to",TokenType::TO},
         {"at",TokenType::AT}, {"selector", TokenType::SELECTOR},
-        {"byte", TokenType::BYTE}, {"in", TokenType::IN}
+        {"byte", TokenType::BYTE}, {"in", TokenType::IN},
+        {"looper", TokenType::LOOPER}
     };
 
     auto it = keywords.find(word);
@@ -212,6 +213,7 @@ std::string Lexer::tokenTypeToString(TokenType type)
     case TokenType::END: return "END";
     case TokenType::BYTE: return "BYTE";
     case TokenType::IN: return "IN";
+    case TokenType::LOOPER: return "LOOPER";
     default:                    return "UNKNOWN";
     }
 }

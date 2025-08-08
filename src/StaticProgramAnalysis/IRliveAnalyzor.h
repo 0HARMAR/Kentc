@@ -11,6 +11,7 @@
 #include <regex>
 #include <sstream>
 #include "../../include/stringUtils.h"
+#include <set>
 
 using namespace std;
 

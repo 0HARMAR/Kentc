@@ -36,11 +36,16 @@ std::unique_ptr<ProgramNode> Parser::parse()
         {
             program->statements.push_back(parseIn());
         }
+        else if (match(TokenType::LOOPER))
+        {
+            program->statements.push_back(parseLooper());
+        }
         else if (peek().type == TokenType::IDENTIFIER)
         {
             position_++;
             program->statements.push_back(parseAssignment());
         }
+        else if (match(TokenType::RIGHT_BRACE)) return program;
         else
         {
             advance();
@@ -185,6 +190,31 @@ std::unique_ptr<InNode> Parser::parseIn()
     inNode->inBytesNum = stoi(inBytesNum.lexeme);
     inNode->inAddress = inAddress.lexeme.substr(2, inAddress.lexeme.length() - 2);
     return inNode;
+}
+
+std::unique_ptr<LooperNode> Parser::parseLooper()
+{
+    consume(TokenType::LEFT_PAREN, "expect '(' after looper");
+    std::string looperTimes = consume(TokenType::NUMBER, "expect looper times").lexeme;
+    consume(TokenType::RIGHT_PAREN, "expect ')' after looper");
+
+    Token token = consume();
+    if (token.type == TokenType::NEWLINE)
+    {
+        Token nextToken = consume();
+        while (nextToken.type == TokenType::NEWLINE)
+        {
+            consume();
+            continue;
+        }
+    }
+    else if (token.type == TokenType::LEFT_BRACE);
+
+    auto looperNode = std::make_unique<LooperNode>();
+    looperNode->looperTimes = stoi(looperTimes);
+    auto looperBody = parse();
+    looperNode->looperBody = std::move(looperBody);
+    return looperNode;
 }
 
 

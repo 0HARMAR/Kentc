@@ -8,6 +8,7 @@
 
 #include "TargetGenerator.h"
 #include <complex>
+#include <bits/atomic_base.h>
 
 TargetGenerator::TargetGenerator() : asmLines(), asmWriter(asmLines), registerAllocator(this->asmWriter){}
 
@@ -34,16 +35,12 @@ void TargetGenerator::processAlloca(const vector<string>& tokens)
 {
 	if (tokens.size() != 2) return ;
 
-	string varName = trim(tokens[0]);
+	string allocaTempReg = trim(tokens[0]);
 	string type = trim(tokens[1]);
 
-	// allocate stack space for the variable
-	int size = variableMap.count(type) ? variableMap[type] : 4;
-	stackSize += size;
-	maxStackOffset = stackSize;
+	string allocaRealReg = registerAllocator.allocReg(allocaTempReg);
+	asmWriter.lea("-" + std::to_string(variableMap[type]) + "(%rbp)", allocaRealReg, "q");
 
-	// record var info
-	variables[varName] = {varName, type, -stackSize};
 }
 
 void TargetGenerator::processStore(const vector<string>& tokens)
@@ -71,7 +68,7 @@ void TargetGenerator::processStore(const vector<string>& tokens)
 			asmWriter.push(spilledTransitReg);
 			asmWriter.mov(storeAddr, denormalizeReg(spilledTransitReg, 32), "l");
 			storeAddr = "(" + denormalizeReg(spilledTransitReg, 32) + ")";
-		} else storeAddr = "(" + denormalizeReg(storeAddr, 32) + ")"; // 32 bit addr is enough
+		} else storeAddr = "(" + storeAddr + ")"; // 32 bit addr is enough
 	}
 
 	// e.g. storeValue : $0x5, %rax, -8(%rbp)
@@ -128,7 +125,7 @@ string TargetGenerator::processLoad(const vector<string>& tokens)
 		asmWriter.push(spilledTransitReg);
 		asmWriter.mov(loadAddr, denormalizeReg(spilledTransitReg, 32), "l");
 		loadAddr = "(" + denormalizeReg(spilledTransitReg, 32) + ")";
-	} else loadAddr = "(" + denormalizeReg(loadAddr, 32) + ")";
+	} else loadAddr = "(" + loadAddr + ")";
 
 	// not allow mov mem to mem
 	if (isMemory(loadValue))

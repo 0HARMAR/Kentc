@@ -1,0 +1,7 @@
+set int a = 100 at 0x100
+
+looper(5) {
+    a = a + 1
+}
+
+print "a is " + a

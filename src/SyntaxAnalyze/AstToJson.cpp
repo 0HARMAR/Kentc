@@ -77,6 +77,12 @@ json Parser::astToJson(const ASTNode* node)
 		j["inBytesNum"] = std::to_string(in->inBytesNum);
 		j["inAddress"] = in->inAddress;
 	}
+	else if (auto looper = dynamic_cast<const LooperNode*>(node))
+	{
+		j["type"] = "Looper";
+		j["looperTimes"] = looper->looperTimes;
+		j["looperBody"] = astToJson(looper->looperBody.get());
+	}
 	else if (auto expr = dynamic_cast<const ExprNode*>(node))
 	{
 		if (auto id = std::get_if<Identifier>(&expr->content))

@@ -16,7 +16,7 @@ int main()
 {
     // 打开源文件
 	std::string srcPath;
-	srcPath = "../print-string.kent";
+	srcPath = "../v3.0.kent";
     std::ifstream src(srcPath);
     if (!src) throw std::runtime_error("Could not open file " + srcPath);
     std::ostringstream buffer;

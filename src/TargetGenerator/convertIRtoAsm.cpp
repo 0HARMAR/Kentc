@@ -178,6 +178,14 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 			args.push_back(tokens[9].substr(1, tokens[9].length() - 2));
 			processGetElementPtr(args);
 		}
+		else if (tokens[2] == "xor" and tokens.size() >= 3)
+		{
+			vector<string> args;
+			args.push_back(tokens[0]);
+			args.push_back(tokens[4].substr(0, tokens[4].length() - 1));
+			args.push_back(tokens[5]);
+			processXor(args);
+		}
 
 		for (const auto& range : liveRanges)
 		{

@@ -50,6 +50,7 @@ add_executable(kentc src/main.cpp
         src/TargetGenerator/formatReg.cpp
         src/TargetGenerator/parseString.cpp
         src/TargetGenerator/processGetElementPtr.cpp
+        src/TargetGenerator/processXor.cpp
 )
 
 add_executable(malloc_test src/memoryAllocator/mallocTest.cpp

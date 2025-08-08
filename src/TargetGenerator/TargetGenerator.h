@@ -45,6 +45,7 @@ public:
 	void processBr(const vector<string>& tokens);
 	void processString(const vector<string>& tokens);
 	void processGetElementPtr(const vector<string>& tokens);
+	void processXor(const vector<string>& tokens);
 	vector<string> convertIRToASM(const vector<string>& irLines);
 	void handleDivision(const string& dividend, const string& divisor, string& result);
 	void handlePrintInt(vector<string>);
