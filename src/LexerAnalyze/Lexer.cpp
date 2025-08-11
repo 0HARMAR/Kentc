@@ -102,8 +102,15 @@ std::vector<Token> Lexer::tokenize()
         }
         else if (current == '-')
         {
-            tokens.push_back(Token(TokenType::MINUS,"-"));
-            pos++;
+            if (pos + 1 < input.size() && input[pos + 1] == '>')
+            {
+                tokens.push_back(Token(TokenType::RETURNARROW, "->"));
+                pos += 2;
+            } else
+            {
+                tokens.push_back(Token(TokenType::MINUS,"-"));
+                pos++;
+            }
         }
         else if (current == '*')
         {
@@ -142,7 +149,8 @@ void Lexer::lexIdentifier()
         {"mov",TokenType::MOV}, {"to",TokenType::TO},
         {"at",TokenType::AT}, {"selector", TokenType::SELECTOR},
         {"byte", TokenType::BYTE}, {"in", TokenType::IN},
-        {"looper", TokenType::LOOPER}
+        {"looper", TokenType::LOOPER}, {"function", TokenType::FUNCTION},
+        {"return", TokenType::RETURN}
     };
 
     auto it = keywords.find(word);
@@ -214,6 +222,10 @@ std::string Lexer::tokenTypeToString(TokenType type)
     case TokenType::BYTE: return "BYTE";
     case TokenType::IN: return "IN";
     case TokenType::LOOPER: return "LOOPER";
+    case TokenType::FUNCTION: return "FUNCTION";
+    case TokenType::FUNCTION_NAME: return "FUNCTION_NAME";
+    case TokenType::RETURN: return "RETURN";
+    case TokenType::RETURNARROW: return "RETURNARROW";
     default:                    return "UNKNOWN";
     }
 }

@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.28.3)
 project(kentc)
 
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_BUILD_TYPE Debug)
 
 add_executable(kentc src/main.cpp
         src/LexerAnalyze/Lexer.cpp
@@ -48,9 +49,12 @@ add_executable(kentc src/main.cpp
         src/utils/stringUtils.cpp
         include/stringUtils.h
         src/TargetGenerator/formatReg.cpp
-        src/TargetGenerator/parseString.cpp
+        src/TargetGenerator/parseIRLine/parseString.cpp
         src/TargetGenerator/processGetElementPtr.cpp
         src/TargetGenerator/processXor.cpp
+        src/TargetGenerator/parseIRLine/parseCall.cpp
+        src/TargetGenerator/parseIRLine/parseFunctionDef.cpp
+        src/TargetGenerator/ProcessIRLine/processDefine.cpp
 )
 
 add_executable(malloc_test src/memoryAllocator/mallocTest.cpp

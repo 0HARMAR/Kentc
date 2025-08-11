@@ -14,7 +14,7 @@
 #include <typeinfo>
 #include "../../include/json.hpp"
 using json = nlohmann::json;
-
+using namespace std;
 // base enum type
 enum class StmtType
 {
@@ -23,7 +23,7 @@ enum class StmtType
 
 enum class ExprType
 {
-    IDENTIFIER, LITERAL, BINARY_OP, EQUALITY
+    IDENTIFIER, LITERAL, BINARY_OP, EQUALITY, CallExpr
 };
 
 enum class ValueType
@@ -46,6 +46,12 @@ struct Literal : ASTNode
 {
     std::variant<int, uintptr_t, std::string> value;
     ValueType type;
+};
+
+struct CallExpr : ASTNode
+{
+    std::string functionName;
+    std::vector<string> arguments;
 };
 
 struct BinaryExpr
@@ -94,7 +100,7 @@ struct MovNode : ASTNode
 struct ExprNode : ASTNode
 {
     ExprType exprType;
-    std::variant<Identifier,Literal,BinaryExpr, EqualityExpr> content;
+    std::variant<Identifier,Literal,BinaryExpr, EqualityExpr, CallExpr> content;
 };
 
 struct ProgramNode : ASTNode
@@ -125,6 +131,19 @@ struct LooperNode : ASTNode
     std::unique_ptr<ProgramNode> looperBody;
 };
 
+struct FunctionNode : ASTNode
+{
+    std::string functionName;
+    std::vector<std::pair<std::string, std::string>> arguments; // (type, name)
+    std::string returnType;
+    std::unique_ptr<ProgramNode> functionBody;
+};
+
+struct ReturnNode : ASTNode
+{
+    unique_ptr<ExprNode> returnValue;;
+};
+
 
 class Parser {
 public:
@@ -146,6 +165,8 @@ private:
     std::unique_ptr<SelectorNode> parseSelector();
     std::unique_ptr<InNode> parseIn();
     std::unique_ptr<LooperNode> parseLooper();
+    std::unique_ptr<FunctionNode> parseFunction();
+    std::unique_ptr<ReturnNode> parseReturn();
     std::unique_ptr<ExprNode> parseExpression();
     std::unique_ptr<ExprNode> parseConditionalExpression();
     std::unique_ptr<ExprNode> parseAdditive();

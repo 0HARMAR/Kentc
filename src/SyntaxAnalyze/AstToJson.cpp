@@ -83,6 +83,19 @@ json Parser::astToJson(const ASTNode* node)
 		j["looperTimes"] = looper->looperTimes;
 		j["looperBody"] = astToJson(looper->looperBody.get());
 	}
+	else if (auto function = dynamic_cast<const FunctionNode*>(node))
+	{
+		j["type"] = "Function";
+		j["functionName"] = function->functionName;
+		j["returnType"] = function->returnType;
+		j["arguments"] = function->arguments;
+		j["functionBody"] = astToJson(function->functionBody.get());
+	}
+	else if (auto returnNode = dynamic_cast<const ReturnNode*>(node))
+	{
+		j["type"] = "Return";
+		j["returnValue"] = astToJson(returnNode->returnValue.get());
+	}
 	else if (auto expr = dynamic_cast<const ExprNode*>(node))
 	{
 		if (auto id = std::get_if<Identifier>(&expr->content))
@@ -120,6 +133,12 @@ json Parser::astToJson(const ASTNode* node)
 			j["left"] = astToJson(eq->lhs.get());
 			j["right"] = astToJson(eq->rhs.get());
 		}
+		else if (auto callExpr = std::get_if<CallExpr>(&expr->content))
+		{
+			j["type"] = "CallExpr";
+			j["functionName"] = callExpr->functionName;
+			j["arguments"] = callExpr->arguments;
+		}
 	}
 	else if (auto literal = dynamic_cast<const Literal*>(node))
 	{
@@ -136,6 +155,12 @@ json Parser::astToJson(const ASTNode* node)
 			j["type"] = "Address";
 			j["value"] = std::get<uintptr_t>(literal->value);
 		}
+	}
+	else if (auto callExpr = dynamic_cast<const CallExpr*>(node))
+	{
+		j["type"] = "CallExpr";
+		j["functionName"] = callExpr->functionName;
+		j["arguments"] = callExpr->arguments;
 	}
 	else if (auto printableNode = dynamic_cast<const PrintableNode*>(node))
 	{

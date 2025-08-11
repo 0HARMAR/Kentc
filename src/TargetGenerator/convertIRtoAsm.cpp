@@ -50,6 +50,25 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 	std::cout << std::endl;
 
 	int irEffectLineNum = 0;
+	// find function defs
+	for (const auto& line : irLines)
+	{
+		istringstream iss(line);
+		string token;
+		vector<string> tokens;
+		while (iss >> token)
+		{
+			tokens.push_back(token);
+		}
+		if (tokens.empty()) continue;
+		if (tokens[0] == "define")
+		{
+			Function_ function = parseFunctionDef(trim(line));
+			functions.push_back(function);
+			currentFunction = function.name;
+		}
+	}
+
 	for (const auto& line : irLines)
 	{
 		string trimmed = trim(line);
@@ -57,7 +76,6 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 
 		// skip decl and metadata
 		if (trimmed.find("declare") == 0 ||
-			trimmed.find("define") == 0 ||
 				trimmed.find("}") == 0)
 		{
 			continue;
@@ -81,6 +99,15 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 		}
 
 		if (tokens.empty()) continue;
+
+		if (tokens[0] == "define")
+		{
+			string name = getFunctionName(trimmed);
+			if (name == "main") continue;
+			Function_ function = parseFunctionDef(trimmed);
+			processDefine(function);
+			irEffectLineNum--; // not count define
+		}
 
 		if (tokens[0][0] == '@') // string define
 		{
@@ -169,6 +196,9 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 		}
 		else if (tokens[0].back() == ':') // is a label
 		{
+			if (tokens[0].substr(0, tokens[0].length() - 1) == "main")
+				asmWriter.label(tokens[0].substr(0, tokens[0].length() - 1) + '_' + currentFunction);
+			else
 			asmWriter.label(tokens[0].substr(0, tokens[0].length() - 1));
 		}
 		else if (tokens[2] == "getelementptr" && tokens.size() >= 3)
@@ -185,6 +215,25 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 			args.push_back(tokens[4].substr(0, tokens[4].length() - 1));
 			args.push_back(tokens[5]);
 			processXor(args);
+		}
+		else if (tokens[0] == "ret")
+		{
+			string returnType = tokens[1];
+			string returnValue = tokens[2];
+
+			string returnBitWide = bitWideToMovSubfix[stoi(returnType.substr(1))];
+
+			if (returnValue[0] == '%')
+			{
+				string returnTempReg = returnValue;
+				string returnRealReg = registerAllocator.getTempVarLocation(returnTempReg);
+				asmWriter.mov(formatReg(returnRealReg, stoi(returnType.substr(1))),
+					formatReg("%rax", stoi(returnType.substr(1))), returnBitWide);
+			} else
+			{
+				asmWriter.mov('$' + returnValue, formatReg("%rax", stoi(returnType.substr(1))), returnBitWide);
+			}
+			asmWriter.ret();
 		}
 
 		for (const auto& range : liveRanges)
@@ -207,68 +256,6 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 	return asmLines;
 }
 
-vector<string> TargetGenerator::parseCall(string callStr)
-{
-	vector<string> tokens;
-	string callBody = callStr;
-
-	// find index of '='
-	size_t equalPos = callStr.find('=');
-	if (equalPos != string::npos)
-	{
-		// extract '=' left part
-		string leftPart = callStr.substr(0, equalPos);
-		// remove blank
-		leftPart.erase(0, leftPart.find_first_not_of(" \t"));
-		leftPart.erase(leftPart.find_last_not_of(" \t") + 1);
-		tokens.push_back(leftPart);
-		callBody = callStr.substr(equalPos + 1);
-	}
-
-	// remove blank
-	callBody.erase(0, callBody.find_first_not_of(" \t"));
-
-	// parse function call part
-	istringstream iss(callBody);
-	string token;
-
-	while (iss >> token)
-	{
-		// process function name with @
-		if (token.find('@') != string::npos)
-		{
-			// remove '@'
-			size_t atPos = token.find('@');
-			if (atPos != string::npos)
-			{
-				token.erase(atPos, 1);
-			}
-		}
-
-		// process comma
-		token.erase(remove(token.begin(), token.end(), ','), token.end());
-
-		// remove parentheses
-		if (token.find('(') != string::npos)
-		{
-			int leftParenthesesIndex = token.find('(');
-			string functionName = token.substr(0, leftParenthesesIndex);
-			string fistType = token.substr(leftParenthesesIndex + 1);
-			tokens.push_back(functionName);
-			tokens.push_back(fistType);
-			continue;
-		}
-		token.erase(remove(token.begin(), token.end(), ')'), token.end());
-
-		if (!token.empty())
-		{
-			tokens.push_back(token);
-		}
-	}
-
-	return tokens;
-}
-
 bool TargetGenerator::isMemory(string op)
 {
 	size_t openParen = op.find('(');
@@ -278,6 +265,16 @@ bool TargetGenerator::isMemory(string op)
 		(closeParen != string::npos) &&
 			(openParen < closeParen);
 }
+
+string TargetGenerator::getFunctionName(string line)
+{
+	size_t at_pos = line.find("@");
+	size_t left_paren = line.find("(");
+	string functionName = line.substr(at_pos + 1, left_paren - at_pos - 1);
+
+	return functionName;
+}
+
 
 
 

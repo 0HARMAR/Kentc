@@ -40,6 +40,14 @@ std::unique_ptr<ProgramNode> Parser::parse()
         {
             program->statements.push_back(parseLooper());
         }
+        else if (match(TokenType::FUNCTION))
+        {
+            program->statements.push_back(parseFunction());
+        }
+        else if (match(TokenType::RETURN))
+        {
+            program->statements.push_back(parseReturn());
+        }
         else if (peek().type == TokenType::IDENTIFIER)
         {
             position_++;
@@ -93,7 +101,7 @@ std::unique_ptr<DeclNode> Parser::parseDeclaration()
     decl->identifier = id.lexeme;
 
     consume(TokenType::EQUAL, "Expected '=' after identifier");
-    decl->initValue = parseLiteral();
+    decl->initValue = parseExpression();
 
     consume(TokenType::AT, "Expected 'at' keyword");
     uintptr_t addr = stoi(consume(TokenType::HEXADDRESS, "Expected address").lexeme.substr(2, 3));
@@ -217,6 +225,40 @@ std::unique_ptr<LooperNode> Parser::parseLooper()
     return looperNode;
 }
 
+std::unique_ptr<FunctionNode> Parser::parseFunction()
+{
+    auto function = std::make_unique<FunctionNode>();
+    std::string functionName = consume(TokenType::IDENTIFIER, "expect function name").lexeme;
+    consume(TokenType::LEFT_PAREN, "expect '(' after function");
+    std::vector<std::pair<std::string, std::string>> arguments;
+    while (true)
+    {
+        Token token = consume();
+        if (token.type == TokenType::RIGHT_PAREN) break;
+        else if (token.type == TokenType::INT)
+        {
+            arguments.push_back(std::make_pair(token.lexeme, consume().lexeme));
+            continue;
+        }
+    }
+    consume(TokenType::RETURNARROW, "expect -> after arguments");
+    std::string returnType = consume().lexeme;
+    consume(TokenType::LEFT_BRACE, "expect { after return type");
+    function->functionName = functionName;
+    function->arguments = arguments;
+    function->returnType = returnType;
+    auto functionBody = parse();
+    function->functionBody = std::move(functionBody);
+    return function;
+}
+
+std::unique_ptr<ReturnNode> Parser::parseReturn()
+{
+    auto returnNode = std::make_unique<ReturnNode>();
+    auto returnValue = parseExpression();
+    returnNode->returnValue = std::move(returnValue);
+    return returnNode;
+}
 
 std::unique_ptr<ExprNode> Parser::parseConditionalExpression()
 {
@@ -300,8 +342,25 @@ std::unique_ptr<ExprNode> Parser::parsePrimary()
     }
     else if (match(TokenType::IDENTIFIER)) {
         auto id = std::make_unique<ExprNode>();
-        id->exprType = ExprType::IDENTIFIER;
-        id->content = Identifier{tokens_[position_ - 1].lexeme};
+        if (peek().type == TokenType::LEFT_PAREN) // identifier is a function name
+        {
+            consume(TokenType::LEFT_PAREN, "expected '(' before identifier");
+            auto callExpr = make_unique<CallExpr>();
+            callExpr->functionName = tokens_[position_ - 2].lexeme;
+            while (true)
+            {
+                Token token = consume();
+                if (token.type == TokenType::RIGHT_PAREN) break;
+                else callExpr->arguments.push_back(token.lexeme);
+            }
+            id->exprType = ExprType::CallExpr;
+            id->content = *callExpr;
+        }
+        else // identifier is a variable
+        {
+            id->exprType = ExprType::IDENTIFIER;
+            id->content = Identifier{tokens_[position_ - 1].lexeme};
+        }
         return id;
     }
     else if (match(TokenType::STRING))

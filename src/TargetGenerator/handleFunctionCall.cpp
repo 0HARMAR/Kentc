@@ -84,3 +84,41 @@ void TargetGenerator::handleIn(vector<string> tokens)
 	addAsmLine(CallingConvention::restoreCallerSave());
 }
 
+void TargetGenerator::handleCall(Function_ function, string resultReg)
+{
+	string name = function.name;
+	string returnType = function.returnType;
+	vector<Variable> arguments = function.parameters;
+
+	vector<string> realRegArgs;
+	for (auto arg : arguments)
+	{
+		if (arg.name[0] == '%')
+		{
+			string realReg = registerAllocator.getTempVarLocation(arg.name);
+			realRegArgs.push_back(realReg);
+		}
+	}
+
+	addAsmLine(CallingConvention::addCallerSave());
+	for (int i = 0; i < arguments.size(); i++)
+	{
+		asmWriter.mov("(" + formatReg(realRegArgs[i], 32) + ")",
+			formatReg('%' + CallingConvention::parameters[i], 32), "l");
+	}
+	asmWriter.call(name);
+
+	vector<string> exclude;
+
+	// save return value, but not the caller save register,
+	// because they will be restore then.
+	for (auto& ex: CallingConvention::callerSaved)
+	{
+		exclude.push_back("%" + ex);
+	}
+	string returnReg = registerAllocator.allocReg(resultReg, exclude);
+	asmWriter.mov("%eax", formatReg(returnReg, 32), "l");
+	addAsmLine(CallingConvention::restoreCallerSave());
+}
+
+

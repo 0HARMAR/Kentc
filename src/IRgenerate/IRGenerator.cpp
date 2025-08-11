@@ -13,6 +13,17 @@ int conditionLabelNum = 0;
 // looper label num
 int looperLabelNum = 0;
 
+// functions
+string functions;
+
+// current function
+string currentFunction = "main";
+
+IRGenerator::IRGenerator()
+{
+	functionVariables["main"] = {};
+}
+
 void IRGenerator::generateIR(const json &program, std::string &outputIR)
 {
 	// add LLVM header decl
@@ -41,6 +52,7 @@ void IRGenerator::generateIR(const json &program, std::string &outputIR)
 	outputIR += "	call void @exit(i32 0)\n";
 	outputIR += "	ret i32 0\n}\n";
 
+	if (!functions.empty()) outputIR += functions;
 }
 
 void IRGenerator::parseStatements(const json& program, std::string& outputIR)
@@ -177,6 +189,51 @@ void IRGenerator::parseStatements(const json& program, std::string& outputIR)
 			+ ", label " + looperLabel + "\n";
 			outputIR += looperEnd.substr(1, looperEnd.length() - 1) + ":\n";
 		}
+		else if (type == "Function")
+		{
+			string functionName = stmt["functionName"];
+			string returnType = stmt["returnType"];
+			vector<pair<string,string>> arguments = stmt["arguments"]; // (type, name)
+
+			// write function define
+			ostringstream oss;
+			oss << "define " << typeToIRtype[returnType] << " @" << functionName << "(";
+			for (size_t i = 0; i < arguments.size(); i++)
+			{
+				oss << typeToIRtype[arguments[i].first] << " " << '%' + arguments[i].second;
+				if (i + 1 < arguments.size()) oss << ", ";
+			}
+
+			oss << ") {";
+			functions += oss.str() + "\n";
+
+			// write function body
+			functions += "main:\n"; // default block named main
+
+			string oldFunction = currentFunction;
+			currentFunction = functionName;
+			// alloca and store for local variable
+			for (size_t i = 0; i < arguments.size(); i++)
+			{
+				functions += "	%" + arguments[i].second + ".addr = alloca i32\n";
+				functionArguments[currentFunction].push_back({arguments[i].second, arguments[i].first});
+				functionVariables[currentFunction].push_back({arguments[i].second + ".addr", arguments[i].first});
+			}
+			for (size_t i = 0; i < arguments.size(); i++)
+			{
+				string name = arguments[i].second;
+				functions += "	store i32 %" + name + ", i32* %" + name + ".addr\n";
+			}
+			parseStatements(stmt["functionBody"], functions);
+			currentFunction = oldFunction;
+
+			functions += "}\n";
+		}
+		else if (type == "Return")
+		{
+			string resultTempReg = generateExpr(stmt["returnValue"], tempRegCount, outputIR);
+			outputIR += "	ret i32 " + resultTempReg + "\n";
+		}
 	}
 }
 
@@ -201,10 +258,24 @@ std::string IRGenerator::generateExpr(const json &expr,
 	{
 		std::string varName = expr["name"];
 		std::string varType;
-		for (auto var : variables)
+		for (auto argument : functionArguments[currentFunction])
 		{
+			if (varName == argument.name)
+			{
+				varType = argument.type;
+				varName = argument.name + ".addr";
+				goto HERE;
+			}
+		}
+		for (auto var : functionVariables[currentFunction])
+		{
+			if (var.name.find(".addr") != string::npos)
+			{
+				if (var.name == varName + ".addr") varType = var.type;
+			} else
 			if (var.name == varName) varType = var.type;
 		}
+HERE:
 		std::string typeSize;
 		if (varType == "int") typeSize = "32";
 		else if (varType == "byte") typeSize = "8";
@@ -240,6 +311,23 @@ std::string IRGenerator::generateExpr(const json &expr,
 
 		ir += "	" + resultReg + " = icmp eq i32 " + tempReg + ", " + right + "\n";
 		return resultReg;
+	}
+	if (expr["type"] == "CallExpr")
+	{
+		string functionName = expr["functionName"];
+		vector<string> arguments = expr["arguments"];
+		string callResultTempReg = "%t" + std::to_string(tempRegCount++);
+		ostringstream oss;
+		oss << "	" + callResultTempReg + " = call i32 " + functionName + "(";
+		for (int i = 0; i < arguments.size(); i++)
+		{
+			if (isdigit(arguments[i][0]))oss << "i32 " + arguments[i];
+			else oss << "i32 %" + arguments[i];
+			if (i + 1 < arguments.size()) oss << ", ";
+		}
+		oss << ")\n";
+		ir += oss.str();
+		return callResultTempReg;
 	}
 	return "";
 }

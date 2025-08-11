@@ -23,7 +23,14 @@ struct Variable
 {
 	string name;
 	string type;
-	int stackOffset;
+	int stackOffset = -1;
+};
+
+struct Function_
+{
+	string name;
+	string returnType;
+	vector<Variable> parameters;
 };
 
 extern "C" void* malloc_at(size_t size, size_t offset);
@@ -46,6 +53,7 @@ public:
 	void processString(const vector<string>& tokens);
 	void processGetElementPtr(const vector<string>& tokens);
 	void processXor(const vector<string>& tokens);
+	void processDefine(Function_ function);
 	vector<string> convertIRToASM(const vector<string>& irLines);
 	void handleDivision(const string& dividend, const string& divisor, string& result);
 	void handlePrintInt(vector<string>);
@@ -53,16 +61,23 @@ public:
 	void handleMallocAt(vector<string>);
 	void handleIn(vector<string>);
 	void handlePrintString(vector<string>);
+	void handleCall(Function_ function, string resultReg);
 private:
 	// program state
 	vector<string> asmLines;
 	map<string, Variable> variables;
-	int stackSize = 0;
-	int maxStackOffset = 0;
+	int stackSize = -16;
+	int stackOffset = 0;
 	int nextTempVar = 0;
 
 	// rodata section index
 	int sectionIndex = 2;
+
+	// functions
+	vector<Function_> functions;
+
+	// current function
+	string currentFunction = "main";
 
 	// bit wide -> mov subfix
 	map<int, string> bitWideToMovSubfix = {
@@ -107,7 +122,9 @@ private:
 	string formatReg(string reg, int bitWide);
 	vector<string> parseCall(string callStr);
 	vector<string> parseString(string str);
+	Function_ parseFunctionDef(string str);
 	bool isMemory(string op);
+	string getFunctionName(string line);
 };
 
 #endif //TARGETGENERATOR_H

@@ -1,7 +1,7 @@
 //
 // Created by hemin on 25-8-7.
 //
-#include "TargetGenerator.h"
+#include "../TargetGenerator.h"
 
 vector<string> TargetGenerator::parseString(string str)
 {

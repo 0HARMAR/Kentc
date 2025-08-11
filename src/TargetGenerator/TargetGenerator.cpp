@@ -39,7 +39,15 @@ void TargetGenerator::processAlloca(const vector<string>& tokens)
 	string type = trim(tokens[1]);
 
 	string allocaRealReg = registerAllocator.allocReg(allocaTempReg);
-	asmWriter.lea("-" + std::to_string(variableMap[type]) + "(%rbp)", allocaRealReg, "q");
+	string size = std::to_string(variableMap[type]);
+	if (stackOffset - stoi(size) < stackSize)
+	{
+		// TODO calculate need stack size
+		stackSize -= 16;
+		asmWriter.sub("$16", "%rsp", "q");
+	}
+	else asmWriter.lea( std::to_string((stackOffset - stoi(size))) + "(%rbp)", allocaRealReg, "q");
+	stackOffset -= stoi(size);
 
 }
 
@@ -242,6 +250,7 @@ void TargetGenerator::processCall(const vector<string>& tokens)
 		argList[argName] = argType;
 	}
 
+	// inner functions
 	if (funcName == "print_int") {
 		handlePrintInt(tokens);
 	} else if (funcName == "exit") {
@@ -256,6 +265,20 @@ void TargetGenerator::processCall(const vector<string>& tokens)
 	} else if (funcName == "print_string")
 	{
 		handlePrintString(tokens);
+	}
+
+	// self-definition functions
+	for (auto function : functions)
+	{
+		if (funcName == function.name)
+		{
+			vector<Variable> arguments;
+			for (auto arg : argList)
+			{
+				arguments.push_back({arg.first, arg.second});
+			}
+			handleCall(Function_{funcName, returnType, arguments},returnReg);
+		}
 	}
 
 }
