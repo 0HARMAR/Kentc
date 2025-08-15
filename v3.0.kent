@@ -2,6 +2,35 @@ set int a = 100 at 0x100
 
 looper(5) {
     a = a + 1
+    looper(10) {
+        a = a + 2
+    }
+    a = a + 1
+    looper(10) {
+        a = a + 1
+        looper(10) {
+            a = a + 1
+        }
+    }
+    a = a + 2
 }
 
 print "a is " + a
+
+set int b = 200 at 0x200
+
+print "please input a add num: "
+
+set byte addNum = 0 at 0x300
+in(1,0x300)
+
+selector(addNum == '1') {
+    b = b + 1
+}
+
+selector(addNum == '2') {
+    b = b + 2
+}
+
+print "b is " + b
+

@@ -14,7 +14,7 @@ void TargetGenerator::processDefine(Function_ function)
 	for (int i = 0; i < arguments.size(); i++)
 	{
 		// alloca real parameter register for argument
-		registerAllocator.allocReg(arguments[i].name, "%" + CallingConvention::parameters[i]);
+		registerAllocator.allocaArguments(arguments[i].name, i);
 	}
 
 }

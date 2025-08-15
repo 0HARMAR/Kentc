@@ -1,0 +1,18 @@
+set int add1 = 10 at 0x100
+set int add2 = 20 at 0x104
+function add (int a, int b) -> int{
+    return a + b
+}
+set int result = add(add1, add2) at 0x108
+print "result is " + result
+
+function fact (int num) -> int {
+    selector(num == 1) {
+        return 1
+    }
+
+    return num * fact(num - 1)
+}
+
+set int fact_result = fact(6) at 0x200
+print "fact result is " + fact_result

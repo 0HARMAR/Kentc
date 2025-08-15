@@ -2,6 +2,8 @@
 
 #include "TargetGenerator.h"
 
+bool isMain = true;
+extern string runMode;
 vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 {
 	ostringstream ir_oss;
@@ -39,15 +41,18 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 	asmWriter.syscall();
 
 	map<string, pair<int, int>> liveRanges = irLiveAnalyzer.calculateLiveRanges(ir_oss.str());
-	for (const auto& range : liveRanges)
+	if (runMode == "DEV")
 	{
-		std::cout << "Rigister " << range.first
-		<< ": Def at " << range.second.first
-		<< ", Last use at " << range.second.second
-		<< ", Range [" << range.second.first
-		<< ", " << range.second.second << "]\n";
+		for (const auto& range : liveRanges)
+		{
+			std::cout << "Rigister " << range.first
+			<< ": Def at " << range.second.first
+			<< ", Last use at " << range.second.second
+			<< ", Range [" << range.second.first
+			<< ", " << range.second.second << "]\n";
+		}
+		std::cout << std::endl;
 	}
-	std::cout << std::endl;
 
 	int irEffectLineNum = 0;
 	// find function defs
@@ -65,8 +70,10 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 		{
 			Function_ function = parseFunctionDef(trim(line));
 			functions.push_back(function);
-			currentFunction = function.name;
-		}
+
+			// init function stack offset
+			stackOffset[function.name] = 0;
+ 		}
 	}
 
 	for (const auto& line : irLines)
@@ -104,9 +111,11 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 		{
 			string name = getFunctionName(trimmed);
 			if (name == "main") continue;
+			else isMain = false;
 			Function_ function = parseFunctionDef(trimmed);
 			processDefine(function);
 			irEffectLineNum--; // not count define
+			currentFunction = name;
 		}
 
 		if (tokens[0][0] == '@') // string define
@@ -197,7 +206,12 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 		else if (tokens[0].back() == ':') // is a label
 		{
 			if (tokens[0].substr(0, tokens[0].length() - 1) == "main")
+			{
 				asmWriter.label(tokens[0].substr(0, tokens[0].length() - 1) + '_' + currentFunction);
+				asmWriter.push("%rbp");
+				asmWriter.mov("%rsp", "%rbp", "q");
+				asmWriter.sub("$256", "%rsp", "q");
+			}
 			else
 			asmWriter.label(tokens[0].substr(0, tokens[0].length() - 1));
 		}
@@ -233,6 +247,7 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 			{
 				asmWriter.mov('$' + returnValue, formatReg("%rax", stoi(returnType.substr(1))), returnBitWide);
 			}
+			asmWriter.leave();
 			asmWriter.ret();
 		}
 
@@ -252,6 +267,21 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 
 	addAsmLine("");
 	addAsmLine("	.section	.note.GNU-stack,\"\",@progbits");
+
+	// write register alloca history
+	string path = R"(/mnt/c/Users/hemin/kentc/ELFBUILD/SSAs.map)";
+	ofstream file(path);
+	if (file.is_open())
+	{
+		for (auto history : registerAllocator.allocaHistory)
+		{
+			file << history << endl;
+		}
+		file.close();
+	} else
+	{
+		cerr << "connot open file" << path << endl;
+	}
 
 	return asmLines;
 }

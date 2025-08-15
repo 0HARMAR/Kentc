@@ -10,7 +10,12 @@
 #include <complex>
 #include <bits/atomic_base.h>
 
-TargetGenerator::TargetGenerator() : asmLines(), asmWriter(asmLines), registerAllocator(this->asmWriter){}
+extern bool isMain;
+TargetGenerator::TargetGenerator()
+: stackSize(-256),
+stackOffset({}),
+asmLines(), asmWriter(asmLines),
+registerAllocator(asmWriter, stackSize, stackOffset, currentFunction){}
 
 void TargetGenerator::addAsmLine(const string& line)
 {
@@ -38,16 +43,22 @@ void TargetGenerator::processAlloca(const vector<string>& tokens)
 	string allocaTempReg = trim(tokens[0]);
 	string type = trim(tokens[1]);
 
-	string allocaRealReg = registerAllocator.allocReg(allocaTempReg);
+	string allocaRealReg = registerAllocator.allocReg(allocaTempReg, "i64", vector<string>{});
 	string size = std::to_string(variableMap[type]);
-	if (stackOffset - stoi(size) < stackSize)
+	if (stackOffset[currentFunction] - stoi(size) < stackSize)
 	{
-		// TODO calculate need stack size
-		stackSize -= 16;
-		asmWriter.sub("$16", "%rsp", "q");
+		registerAllocator.extandStack(isMain);
 	}
-	else asmWriter.lea( std::to_string((stackOffset - stoi(size))) + "(%rbp)", allocaRealReg, "q");
-	stackOffset -= stoi(size);
+	if (isMemory(allocaRealReg))
+	{
+		string transitReg = registerAllocator.getRandomTransitReg();
+		asmWriter.push(transitReg);
+		asmWriter.lea( std::to_string((stackOffset[currentFunction] - stoi(size))) + "(%rbp)", transitReg, "q");
+		asmWriter.mov(transitReg, allocaRealReg, "q");
+		asmWriter.pop(transitReg);
+	}
+	else asmWriter.lea( std::to_string((stackOffset[currentFunction] - stoi(size))) + "(%rbp)", allocaRealReg, "q");
+	stackOffset[currentFunction] -= stoi(size);
 
 }
 
@@ -69,14 +80,14 @@ void TargetGenerator::processStore(const vector<string>& tokens)
 	if (destVar[0] == '%') // addr store in a temp register
 	{
 		storeAddr = registerAllocator.getTempVarLocation(destVar);
-		// memory access addr must 32 bit least
+		// memory access addr must 64 bit
 		if (isMemory(storeAddr))
 		{
 			spilledTransitReg = registerAllocator.getRandomTransitReg();
 			asmWriter.push(spilledTransitReg);
-			asmWriter.mov(storeAddr, denormalizeReg(spilledTransitReg, 32), "l");
-			storeAddr = "(" + denormalizeReg(spilledTransitReg, 32) + ")";
-		} else storeAddr = "(" + storeAddr + ")"; // 32 bit addr is enough
+			asmWriter.mov(storeAddr, spilledTransitReg, "q");
+			storeAddr = "(" + spilledTransitReg + ")";
+		} else storeAddr = "(" + storeAddr + ")";
 	}
 
 	// e.g. storeValue : $0x5, %rax, -8(%rbp)
@@ -93,17 +104,17 @@ void TargetGenerator::processStore(const vector<string>& tokens)
 	// not allow mov mem to mem
 	if (isMemory(storeValue))
 	{
-		string spilledTransitReg_ = registerAllocator.getRandomTransitReg();
-		spilledTransitReg_ = denormalizeReg(spilledTransitReg_, 32);
-		asmWriter.push(normalizeReg(spilledTransitReg_)); // must push 64 bit for align
+		string spilledTransitReg_ = registerAllocator.getRandomTransitReg
+		(storeAddr.substr(1, storeAddr.size() - 2)); // remove '(' and ')'
+		asmWriter.push(spilledTransitReg_); // must push 64 bit for align
 		asmWriter.mov(storeValue, formatReg(spilledTransitReg_, typeSize), bitWideToMovSubfix[typeSize]);
-		asmWriter.mov(spilledTransitReg_, storeAddr, "l");
-		asmWriter.pop(normalizeReg(spilledTransitReg_)); // must pop 64 bit
+		asmWriter.mov(formatReg(spilledTransitReg_, typeSize), storeAddr, bitWideToMovSubfix[typeSize]);
+		asmWriter.pop(spilledTransitReg_); // must pop 64 bit
 		if (!spilledTransitReg.empty()) asmWriter.pop(spilledTransitReg);
 		return;
 	}
 
-	asmWriter.mov(storeValue, storeAddr, "l");
+	asmWriter.mov(storeValue, storeAddr, bitWideToMovSubfix[typeSize]);
 	if (!spilledTransitReg.empty()) asmWriter.pop(spilledTransitReg);
 }
 
@@ -121,7 +132,7 @@ string TargetGenerator::processLoad(const vector<string>& tokens)
 	// first process loadValue, because it may
 	// involve stack extend and sub rsp
 	// thus influence push/pop sequence
-	string loadValue = registerAllocator.allocReg(destVar);
+	string loadValue = registerAllocator.allocReg(destVar, "i" + std::to_string((typeSize)), vector<string>{});
 	if (loadValue[0] == '%') loadValue = denormalizeReg(loadValue, typeSize);
 
 	// e.g. loadAddr : (%rax), (-8(%rbp))(not allow in syntax)
@@ -131,8 +142,8 @@ string TargetGenerator::processLoad(const vector<string>& tokens)
 	{
 		spilledTransitReg = registerAllocator.getRandomTransitReg();
 		asmWriter.push(spilledTransitReg);
-		asmWriter.mov(loadAddr, denormalizeReg(spilledTransitReg, 32), "l");
-		loadAddr = "(" + denormalizeReg(spilledTransitReg, 32) + ")";
+		asmWriter.mov(loadAddr, spilledTransitReg, "q");
+		loadAddr = "(" + spilledTransitReg + ")";
 	} else loadAddr = "(" + loadAddr + ")";
 
 	// not allow mov mem to mem
@@ -140,7 +151,7 @@ string TargetGenerator::processLoad(const vector<string>& tokens)
 	{
 		string spilledTransitReg_ = registerAllocator.getRandomTransitReg();
 		asmWriter.push(spilledTransitReg_);
-		asmWriter.mov(loadAddr, denormalizeReg(spilledTransitReg_, 32), "l");
+		asmWriter.mov(loadAddr, formatReg(spilledTransitReg_, typeSize), bitWideToMovSubfix[typeSize]);
 		asmWriter.mov(denormalizeReg(spilledTransitReg_, typeSize), loadValue, bitWideToMovSubfix[typeSize]);
 		asmWriter.pop(spilledTransitReg_);
 		if (!spilledTransitReg.empty()) asmWriter.pop(spilledTransitReg);
@@ -150,137 +161,6 @@ string TargetGenerator::processLoad(const vector<string>& tokens)
 	asmWriter.mov(loadAddr, formatReg(loadValue, typeSize), bitWideToMovSubfix[typeSize]);
 	if (!spilledTransitReg.empty()) asmWriter.pop(spilledTransitReg);
 	return "";
-}
-
-string TargetGenerator::processBinaryOp(const vector<string>& tokens)
-{
-	if (tokens.size() != 5) return "";
-
-	string result = tokens[0];
-	string op = tokens[1];
-	string type = tokens[2];
-	string op1 = tokens[3];
-	op1.pop_back();
-	string op2 = tokens[4];
-
-	// process operand
-	string src1,src2;
-	if (op1.find('%') != string::npos)
-	{
-		src1 = registerAllocator.getTempVarLocation(op1);
-		src1 = denormalizeReg(src1, 32);
-	} else
-	{
-		src1 = "$" + op1;
-	}
-
-	if (op2.find('%') != string::npos)
-	{
-		src2 = registerAllocator.getTempVarLocation(op2);
-		src2 = denormalizeReg(src2, 32);
-	} else
-	{
-		src2 = "$" + op2;
-	}
-
-	// process div
-	if (op == "sdiv")
-	{
-		handleDivision(src1, src2, result);
-	}
-
-	// process other ops
-	if (opMap.find(op) != opMap.end() && op != "sdiv")
-	{
-		string resultReg = registerAllocator.allocReg(result);
-		if (src1[0] != '$')
-		{
-			if (isMemory(src1) && isMemory(resultReg))
-			{
-				asmWriter.movMemToMem(src1, denormalizeReg(resultReg, 32),
-					denormalizeReg(registerAllocator.getRandomTransitReg(), 32), "l");
-			} else
-			{
-				addAsmLine("	movl	" + src1 + ", " + denormalizeReg(resultReg, 32));
-			}
-		}
-		else addAsmLine("	movl	" + src1 + ", " + denormalizeReg(resultReg, 32));
-		if (op == "mul" and isMemory(resultReg)) // mul dest could not be memory
-		{
-			string spilledTransitReg = registerAllocator.getRandomTransitReg();
-			asmWriter.push(spilledTransitReg);
-			asmWriter.mov(denormalizeReg(resultReg, 32), denormalizeReg(spilledTransitReg, 32), "l");
-			asmWriter.mul(src2, denormalizeReg(spilledTransitReg, 32), "l");
-			asmWriter.mov(denormalizeReg(spilledTransitReg, 32), denormalizeReg(resultReg, 32), "l");
-			asmWriter.pop(spilledTransitReg);
-			return "";
-		}
-		if (isMemory(src2) && isMemory(resultReg)) // two operand both mem? no,no
-			// let us make fuck transit
-		{
-			string spilledTransitReg = registerAllocator.getRandomTransitReg();
-			asmWriter.push(spilledTransitReg);
-			asmWriter.mov(denormalizeReg(resultReg, 32), denormalizeReg(spilledTransitReg, 32), "l");
-			if (op == "add") asmWriter.add(src2, denormalizeReg(spilledTransitReg, 32),  "l");
-			else if (op == "sub") asmWriter.sub(src2, denormalizeReg(spilledTransitReg, 32), "l");
-			asmWriter.mov(denormalizeReg(spilledTransitReg, 32), denormalizeReg(resultReg, 32), "l");
-			asmWriter.pop(spilledTransitReg);
-			return "";
-		}
-		addAsmLine("	" + opMap[op] + "	" + src2 + ", " + denormalizeReg(resultReg, 32));
-	}
-
-	return "";
-}
-
-void TargetGenerator::processCall(const vector<string>& tokens)
-{
-	if (tokens.empty()) return;
-
-	string funcName = tokens[0];
-	string returnType = tokens[1];
-	string returnReg = tokens[2];
-	map<string, string> argList; // name -> type mapping
-
-	for (int i = 3; i < tokens.size(); i += 2)
-	{
-		if (i + 1 >= tokens.size()) break;
-		string argType = tokens[i];
-		string argName = tokens[i + 1];
-		argList[argName] = argType;
-	}
-
-	// inner functions
-	if (funcName == "print_int") {
-		handlePrintInt(tokens);
-	} else if (funcName == "exit") {
-		handleExit(tokens);
-	} else if (funcName == "malloc") {
-	} else if (funcName == "free") {
-	} else if (funcName == "malloc_at") {
-		handleMallocAt(tokens);
-	} else if (funcName == "in")
-	{
-		handleIn(tokens);
-	} else if (funcName == "print_string")
-	{
-		handlePrintString(tokens);
-	}
-
-	// self-definition functions
-	for (auto function : functions)
-	{
-		if (funcName == function.name)
-		{
-			vector<Variable> arguments;
-			for (auto arg : argList)
-			{
-				arguments.push_back({arg.first, arg.second});
-			}
-			handleCall(Function_{funcName, returnType, arguments},returnReg);
-		}
-	}
-
 }
 
 void TargetGenerator::processInttoptr(const vector<string>& tokens)
@@ -294,7 +174,7 @@ void TargetGenerator::processInttoptr(const vector<string>& tokens)
 	ss << hex << intAddr;
 	string realAddr = ss.str();
 
-	string Reg = registerAllocator.allocReg(convertToReg);
+	string Reg = registerAllocator.allocReg(convertToReg, "i32", vector<string>{});
 	addAsmLine("	movl	$0x" + realAddr + ", " + denormalizeReg(Reg, 32));
 }
 
@@ -303,12 +183,14 @@ void TargetGenerator::processIcmp(const vector<string>& tokens)
 	string resultReg = tokens[0];
 	string op = tokens[1];
 	string op1Type = tokens[2];
+	int typeSize = variableMap[op1Type];
+	string typeSuffix = bitWideToMovSubfix[typeSize * 8];
 	string op1 = tokens[3];
 	string op2 = tokens[4];
 
 	string op1Reg = registerAllocator.getTempVarLocation(op1);
-	asmWriter.cmp("$" + op2, denormalizeReg(op1Reg, 32), "l");
-	string cmpResult = registerAllocator.allocReg(resultReg);
+	asmWriter.cmp("$" + op2, denormalizeReg(op1Reg, typeSize * 8), typeSuffix);
+	string cmpResult = registerAllocator.allocReg(resultReg, "i1", vector<string>{});
 	asmWriter.set(denormalizeReg(cmpResult, 8), "e");
 }
 

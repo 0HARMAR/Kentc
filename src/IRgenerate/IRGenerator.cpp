@@ -19,6 +19,8 @@ string functions;
 // current function
 string currentFunction = "main";
 
+extern string runMode;
+
 IRGenerator::IRGenerator()
 {
 	functionVariables["main"] = {};
@@ -53,6 +55,20 @@ void IRGenerator::generateIR(const json &program, std::string &outputIR)
 	outputIR += "	ret i32 0\n}\n";
 
 	if (!functions.empty()) outputIR += functions;
+
+	if (runMode == "DEV")
+	{
+		string IRPath = R"(/mnt/c/Users/hemin/kentc/ELFBUILD/ir.llvm)";
+		ofstream file(IRPath);
+		if (file.is_open())
+		{
+			file << outputIR << std::endl;
+			file.close();
+		} else
+		{
+			cerr << "connot open file" << IRPath << endl;
+		}
+	}
 }
 
 void IRGenerator::parseStatements(const json& program, std::string& outputIR)
@@ -113,10 +129,15 @@ void IRGenerator::parseStatements(const json& program, std::string& outputIR)
 				}
 				else if (value["type"] == "Identifier")
 				{
+
 					std::string tempReg = generateExpr(value, tempRegCount, irExpr);
 					outputIR += irExpr;
-					outputIR += "	call void @print_int(i32 " + tempReg + ")\n";
+					string varName = value["name"];
+					string varType = getVarTypeByName(varName);
+					if (varType == "int") outputIR += "	call void @print_int(i32 " + tempReg + ")\n";
+					else outputIR += "	call void @print_string(i8* %" + varName + ", i32 1)\n";
 				}
+				irExpr = "";
 			}
 		}
 
@@ -170,8 +191,10 @@ void IRGenerator::parseStatements(const json& program, std::string& outputIR)
 			outputIR += "	" + tempReg + " = alloca i32\n";
 			outputIR += "	store i32 0, i32* " + tempReg + "\n";
 
-			std::string looperLabel = "%lopper" + std::to_string(looperLabelNum);
+			string looperLabelNum_ = std::to_string(looperLabelNum);
+			std::string looperLabel = "%lopper" + looperLabelNum_;
 			outputIR += looperLabel.substr(1, looperLabel.length() - 1) + ":\n";
+			looperLabelNum++;
 			parseStatements(stmt["looperBody"], outputIR);
 			std::string looperTimesLoadResult = "%t" + std::to_string(tempRegCount++);
 			std::string looperTempReg = "%t" + std::to_string(tempRegCount++);
@@ -184,7 +207,7 @@ void IRGenerator::parseStatements(const json& program, std::string& outputIR)
 
 			outputIR += "	" + cmpResultTempReg + " = icmp eq i32 " + looperTempReg + ", " + looperTimes + "\n";
 
-			std::string looperEnd = "%end" + std::to_string(looperLabelNum);
+			std::string looperEnd = "%end" + looperLabelNum_;
 			outputIR += "	br i1 " + cmpResultTempReg + ", label " + looperEnd
 			+ ", label " + looperLabel + "\n";
 			outputIR += looperEnd.substr(1, looperEnd.length() - 1) + ":\n";
@@ -237,97 +260,10 @@ void IRGenerator::parseStatements(const json& program, std::string& outputIR)
 	}
 }
 
-std::string IRGenerator::generateExpr(const json &expr,
-	int &tempRegCount, std::string &ir)
+string IRGenerator::getVarTypeByName(string name)
 {
-	if (expr["type"] == "Integer")
+	for (auto var : functionVariables[currentFunction])
 	{
-		return std::to_string(expr["value"].get<int>());
+		if (var.name == name) return var.type;
 	}
-	if (expr["type"] == "String")
-	{
-		std::string initValue = expr["value"];
-		char initValue_char = initValue[0];
-		int initValue_char_int = static_cast<int> (initValue_char);
-		std::stringstream ss;
-		ss << std::hex << initValue_char_int;
-		std::string initValue_hex = ss.str();
-		return initValue_hex;
-	}
-	if (expr["type"] == "Identifier")
-	{
-		std::string varName = expr["name"];
-		std::string varType;
-		for (auto argument : functionArguments[currentFunction])
-		{
-			if (varName == argument.name)
-			{
-				varType = argument.type;
-				varName = argument.name + ".addr";
-				goto HERE;
-			}
-		}
-		for (auto var : functionVariables[currentFunction])
-		{
-			if (var.name.find(".addr") != string::npos)
-			{
-				if (var.name == varName + ".addr") varType = var.type;
-			} else
-			if (var.name == varName) varType = var.type;
-		}
-HERE:
-		std::string typeSize;
-		if (varType == "int") typeSize = "32";
-		else if (varType == "byte") typeSize = "8";
-
-		std::string tempReg = "%t" + std::to_string(tempRegCount++);
-		ir += "	" + tempReg + " = load i" + typeSize + ", i" + typeSize + "* " + "%" + varName + "\n";
-		return tempReg;
-	}
-	if (expr["type"] == "BinaryExpr")
-	{
-		std::string left = generateExpr(expr["left"],tempRegCount,ir);
-		std::string right = generateExpr(expr["right"],tempRegCount,ir);
-		std::string op = expr["operator"];
-		std::string resultReg = "%t" + std::to_string(tempRegCount++);
-
-		if (op == "+") ir += "	" + resultReg + " = add i32 " + left + ", " + right + "\n";
-		else if (op == "-") ir += "  " + resultReg + " = sub i32 " + left + ", " + right + "\n";
-		else if (op == "*") ir += "  " + resultReg + " = mul i32 " + left + ", " + right + "\n";
-		else if (op == "/") ir += "  " + resultReg + " = sdiv i32 " + left + ", " + right + "\n";
-
-		return resultReg;
-	}
-	// e.g. %cond = icmp eq i32 %a, 42/%b
-	if (expr["type"] == "EqualityExpr")
-	{
-		std::string left = expr["left"]["name"];
-		left = "%" + left;
-		std::string tempReg = "%t" + std::to_string(tempRegCount++);
-		ir += "	" + tempReg + " = load i32, i32* " + left + "\n";
-
-		std::string right = std::to_string(static_cast<int>(expr["right"]["value"]));
-		std::string resultReg = "%t" + std::to_string(tempRegCount++);
-
-		ir += "	" + resultReg + " = icmp eq i32 " + tempReg + ", " + right + "\n";
-		return resultReg;
-	}
-	if (expr["type"] == "CallExpr")
-	{
-		string functionName = expr["functionName"];
-		vector<string> arguments = expr["arguments"];
-		string callResultTempReg = "%t" + std::to_string(tempRegCount++);
-		ostringstream oss;
-		oss << "	" + callResultTempReg + " = call i32 " + functionName + "(";
-		for (int i = 0; i < arguments.size(); i++)
-		{
-			if (isdigit(arguments[i][0]))oss << "i32 " + arguments[i];
-			else oss << "i32 %" + arguments[i];
-			if (i + 1 < arguments.size()) oss << ", ";
-		}
-		oss << ")\n";
-		ir += oss.str();
-		return callResultTempReg;
-	}
-	return "";
 }

@@ -15,11 +15,11 @@ add_executable(kentc src/main.cpp
         src/IRgenerate/IRGenerator.h
         src/TargetGenerator/TargetGenerator.cpp
         src/TargetGenerator/TargetGenerator.h
-        src/TargetGenerator/RegisterAllocator.cpp
-        src/TargetGenerator/RegisterAllocator.h
+        src/TargetGenerator/RegisterAllocator/RegisterAllocator.cpp
+        src/TargetGenerator/RegisterAllocator/RegisterAllocator.h
         src/StaticProgramAnalysis/StaticProgramAnalyzer.cpp
         src/StaticProgramAnalysis/StaticProgramAnalyzer.h
-        src/TargetGenerator/HandleDivision.cpp
+        src/TargetGenerator/ProcessIRLine/HandleDivision.cpp
         src/TargetGenerator/CallingConvention.cpp
         src/TargetGenerator/CallingConvention.h
         src/CompileOptimise/Instruction.cpp
@@ -41,20 +41,24 @@ add_executable(kentc src/main.cpp
         src/ExecutableGenerator/ExecutableGenerator.h
         src/memoryAllocator/memoryAllocator.cpp
         src/TargetGenerator/convertIRtoAsm.cpp
-        src/TargetGenerator/handleFunctionCall.cpp
-        src/TargetGenerator/asmWriter.cpp
-        src/TargetGenerator/AsmWriter.h
+        src/TargetGenerator/ProcessIRLine/handleFunctionCall.cpp
+        src/TargetGenerator/AsmWriter/AsmWriter.cpp
+        src/TargetGenerator/AsmWriter/AsmWriter.h
         src/StaticProgramAnalysis/IRliveAnalyzor.cpp
         src/StaticProgramAnalysis/IRliveAnalyzor.h
         src/utils/stringUtils.cpp
         include/stringUtils.h
-        src/TargetGenerator/formatReg.cpp
         src/TargetGenerator/parseIRLine/parseString.cpp
-        src/TargetGenerator/processGetElementPtr.cpp
-        src/TargetGenerator/processXor.cpp
+        src/TargetGenerator/ProcessIRLine/processGetElementPtr.cpp
+        src/TargetGenerator/ProcessIRLine/processXor.cpp
         src/TargetGenerator/parseIRLine/parseCall.cpp
         src/TargetGenerator/parseIRLine/parseFunctionDef.cpp
         src/TargetGenerator/ProcessIRLine/processDefine.cpp
+        src/TargetGenerator/ProcessIRLine/processCall.cpp
+        src/TargetGenerator/ProcessIRLine/processBinaryOp.cpp
+        src/IRgenerate/generateExpr.cpp
+        src/TargetGenerator/include/utils.h
+        src/TargetGenerator/include/utils.cpp
 )
 
 add_executable(malloc_test src/memoryAllocator/mallocTest.cpp

@@ -14,7 +14,7 @@ map<string, pair<int, int>> IRliveAnalyzor::calculateLiveRanges(const string& ir
 	map<string, vector<pair<string, int>>> uses; // use index record tempReg -> vector((block, def index))
 
 	// regex : match tempReg(%t after num)
-	regex tempRegPattern("%t\\d+");
+	regex tempRegPattern("%\\d+");
 	sregex_iterator endIterator;
 
 	// current basic block

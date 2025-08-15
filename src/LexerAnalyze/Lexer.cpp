@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include "Lexer.hpp"
 
+extern std::string runMode;
 Lexer::Lexer(const std::string& input) : input(input), pos(0) {}
 
 std::vector<Token> Lexer::tokenize()
@@ -122,12 +123,32 @@ std::vector<Token> Lexer::tokenize()
             tokens.push_back(Token(TokenType::DIVIDE,"/"));
             pos++;
         }
+        else if (current == ',')
+        {
+            tokens.push_back(Token(TokenType::COMMA, ","));
+            pos++;
+        }
         else
         {
             pos++;
         }
     }
     tokens.push_back(Token(TokenType::END, "eof"));
+
+    if (runMode == "DEV")
+    {
+        std::ofstream file(R"(/mnt/c/Users/hemin/kentc/ELFBUILD/lexer.output)");
+        if (file.is_open())
+        {
+            for (const auto& token : tokens)
+            {
+                file << "Token: " << token.lexeme
+                      << ", Type: " << tokenTypeToString(token.type) << std::endl;
+            }
+            file.close();
+        }
+    }
+
     return tokens;
 }
 
@@ -226,6 +247,7 @@ std::string Lexer::tokenTypeToString(TokenType type)
     case TokenType::FUNCTION_NAME: return "FUNCTION_NAME";
     case TokenType::RETURN: return "RETURN";
     case TokenType::RETURNARROW: return "RETURNARROW";
+    case TokenType::COMMA: return "COMMA";
     default:                    return "UNKNOWN";
     }
 }

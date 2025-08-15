@@ -7,6 +7,8 @@
 #include "../../include/json.hpp"
 #include <map>
 #include <set>
+#include <fstream>
+#include <iostream>
 
 using json = nlohmann::json;
 using namespace std;
@@ -29,6 +31,7 @@ private:
 	map<string, vector<variable>> functionArguments;
 	std::vector<variable>& variables = functionVariables["main"];
 	void parseStatements(const json &statement, std::string &outputIR);
+	string getVarTypeByName(string name);
 
 	int index = 0;
 

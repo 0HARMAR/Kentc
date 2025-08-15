@@ -1,5 +1,6 @@
 #include "Parser.h"
 
+extern std::string runMode;
 json Parser::astToJson(const ASTNode* node)
 {
 	if (!node) return json(nullptr);
@@ -135,9 +136,7 @@ json Parser::astToJson(const ASTNode* node)
 		}
 		else if (auto callExpr = std::get_if<CallExpr>(&expr->content))
 		{
-			j["type"] = "CallExpr";
-			j["functionName"] = callExpr->functionName;
-			j["arguments"] = callExpr->arguments;
+			j = astToJson(callExpr);
 		}
 	}
 	else if (auto literal = dynamic_cast<const Literal*>(node))
@@ -160,7 +159,13 @@ json Parser::astToJson(const ASTNode* node)
 	{
 		j["type"] = "CallExpr";
 		j["functionName"] = callExpr->functionName;
-		j["arguments"] = callExpr->arguments;
+		json args;
+		int index = 0;
+		for (auto expr : callExpr->arguments)
+		{
+			args[std::to_string(index++)] = astToJson(&expr);
+		}
+		j["arguments"] = args;
 	}
 	else if (auto printableNode = dynamic_cast<const PrintableNode*>(node))
 	{
@@ -184,6 +189,16 @@ json Parser::astToJson(const ASTNode* node)
 	else
 	{
 		j["type"] = "Unknown";
+	}
+
+	if (runMode == "DEV")
+	{
+		std::ofstream file(R"(/mnt/c/Users/hemin/kentc/ELFBUILD/syntax.json)");
+		if (file.is_open())
+		{
+			file << j.dump(4) << std::endl;
+			file.close();
+		}
 	}
 
 	return j;

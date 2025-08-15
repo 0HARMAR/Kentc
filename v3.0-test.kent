@@ -1,0 +1,10 @@
+set int addNum = 0 at 0x100
+set int result = 0 at 0x200
+looper (3) {
+    in(1, 0x100)
+    selector(addNum == '1') {
+        result = result + 1
+    }
+}
+
+print "result is " + result

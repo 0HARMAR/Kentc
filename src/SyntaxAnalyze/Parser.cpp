@@ -347,11 +347,20 @@ std::unique_ptr<ExprNode> Parser::parsePrimary()
             consume(TokenType::LEFT_PAREN, "expected '(' before identifier");
             auto callExpr = make_unique<CallExpr>();
             callExpr->functionName = tokens_[position_ - 2].lexeme;
+
             while (true)
             {
-                Token token = consume();
-                if (token.type == TokenType::RIGHT_PAREN) break;
-                else callExpr->arguments.push_back(token.lexeme);
+                callExpr->arguments.push_back(*parseExpression());
+                if (peek().type == TokenType::RIGHT_PAREN)
+                {
+                    advance();
+                    break;
+                }
+                if (peek().type == TokenType::COMMA)
+                {
+                    consume();
+                    continue;
+                }
             }
             id->exprType = ExprType::CallExpr;
             id->content = *callExpr;

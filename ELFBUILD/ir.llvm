@@ -1,37 +1,63 @@
+@str1 = constant [16 x i8] c"fact result is \00"
+@str0 = constant [11 x i8] c"result is \00"
 declare void @print_int(i32)
 declare void @exit(i32)
 declare i8* @malloc(i64)
 declare i8* @malloc_at(i64, i64)
 declare void @free(i8*)
+declare void @in(i32, i32)
+declare void @print_string(i8*, i32)
 
 define i32 @main() {
-	%a = call i8* @malloc_at(i64 4, i64 512)
-	store i32 5, i32* %a
-	store i32 2, i32* %a
-  %t1 = load i32, i32* %a
-	call void @print_int(i32 %t1)
-	call void @print_int(i32 %a)
-	%t2 = inttoptr i64 513 to i32*
-	store i32 1, i32* %t2
-  %t3 = load i32, i32* %a
-	%t4 = inttoptr i64 514 to i32*
-	store i32 %t3, i32* %t4
-  %t5 = mul i32 2, 3
-  %t6 = add i32 1, %t5
-  %t7 = sdiv i32 10, 5
-  %t8 = sub i32 %t6, %t7
-	store i32 %t8, i32* %a
-  %t9 = load i32, i32* %a
-	call void @print_int(i32 %t9)
-	%b = call i8* @malloc_at(i64 4, i64 768)
-	store i32 100, i32* %b
-  %t10 = mul i32 2, 3
-  %t11 = sdiv i32 20, 2
-  %t12 = add i32 %t10, %t11
-	store i32 %t12, i32* %b
-  %t13 = load i32, i32* %b
-	call void @print_int(i32 %t13)
-	call void @print_int(i32 %b)
-  call void @exit(i32 0)
-  ret i32 0
+	%add1 = call i32* @malloc_at(i64 4, i64 100)
+	store i32 10, i32* %add1
+	%add2 = call i32* @malloc_at(i64 4, i64 104)
+	store i32 20, i32* %add2
+	%result = call i32* @malloc_at(i64 4, i64 108)
+	%t4 = load i32, i32* %add1
+	%t5 = load i32, i32* %add2
+	%t6 = call i32 add(i32 %t4, i32 %t5)
+	store i32 %t6, i32* %result
+	%t7 = getelementptr [11 x i8], [11 x i8]* @str0, i32 0, i32, 0
+	call void @print_string(i8* %t7, i32 11)
+	%t8 = load i32, i32* %result
+	call void @print_int(i32 %t8)
+	%fact_result = call i32* @malloc_at(i64 4, i64 200)
+	%t16 = call i32 fact(i32 6)
+	store i32 %t16, i32* %fact_result
+	%t17 = getelementptr [16 x i8], [16 x i8]* @str1, i32 0, i32, 0
+	call void @print_string(i8* %t17, i32 16)
+	%t18 = load i32, i32* %fact_result
+	call void @print_int(i32 %t18)
+	call void @exit(i32 0)
+	ret i32 0
 }
+define i32 @add(i32 %a, i32 %b) {
+main:
+	%a.addr = alloca i32
+	%b.addr = alloca i32
+	store i32 %a, i32* %a.addr
+	store i32 %b, i32* %b.addr
+	%t1 = load i32, i32* %a.addr
+	%t2 = load i32, i32* %b.addr
+	%t3 = add i32 %t1, %t2
+	ret i32 %t3
+}
+define i32 @fact(i32 %num) {
+main:
+	%num.addr = alloca i32
+	store i32 %num, i32* %num.addr
+	%t9 = load i32, i32* %num.addr
+	%t10 = icmp eq i32 %t9, 1
+	br i1 %t10, label %if_true0, label %continue1
+if_true0:
+	ret i32 1
+continue1:
+	%t11 = load i32, i32* %num.addr
+	%t12 = load i32, i32* %num.addr
+  %t13 = sub i32 %t12, 1
+	%t14 = call i32 fact(i32 %t13)
+  %t15 = mul i32 %t11, %t14
+	ret i32 %t15
+}
+

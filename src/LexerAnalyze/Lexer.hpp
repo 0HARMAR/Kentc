@@ -3,7 +3,8 @@
 #include <vector>
 #include "../../include/TokenType.h"
 #include "../../include/Token.h"
-
+#include <fstream>
+#include <iostream>
 
 class Lexer
 {

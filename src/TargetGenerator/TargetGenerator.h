@@ -10,14 +10,15 @@
 #include <sstream>
 #include <vector>
 #include <cctype>
-#include "RegisterAllocator.h"
+#include "RegisterAllocator/RegisterAllocator.h"
 #include "../StaticProgramAnalysis/StaticProgramAnalyzer.h"
 #include "CallingConvention.h"
-#include "AsmWriter.h"
+#include "AsmWriter/AsmWriter.h"
 #include <stdint.h>
 #include "../../include/stringUtils.h"
 #include "../StaticProgramAnalysis/IRliveAnalyzor.h"
 #include <regex>
+#include "include/utils.h"
 using namespace std;
 struct Variable
 {
@@ -64,10 +65,9 @@ public:
 	void handleCall(Function_ function, string resultReg);
 private:
 	// program state
-	vector<string> asmLines;
 	map<string, Variable> variables;
-	int stackSize = -16;
-	int stackOffset = 0;
+	int stackSize = -256;
+	map<string, int> stackOffset = {};
 	int nextTempVar = 0;
 
 	// rodata section index
@@ -78,19 +78,6 @@ private:
 
 	// current function
 	string currentFunction = "main";
-
-	// bit wide -> mov subfix
-	map<int, string> bitWideToMovSubfix = {
-		{8, "b"},
-		{16, "w"},
-		{32, "l"},
-		{64, "q"}
-	};
-
-	// var map
-	map<string, int> variableMap = {
-		{"i32", 4},
-	};
 
 	// operator map
 	map<string, string> opMap = {
@@ -104,14 +91,16 @@ private:
 	// name -> (length, content)
 	map<string, pair<int, string>> stringTable;
 
+	vector<string> asmLines;
+
+	// asm writer
+	AsmWriter asmWriter;
+
 	// register allocator
 	RegisterAllocator registerAllocator;
 
 	// static program analyzer
 	StaticProgramAnalyzer staticProgramAnalyzer;
-
-	// asm writer
-	AsmWriter asmWriter;
 
 	// ir live analyse
 	IRliveAnalyzor irLiveAnalyzer;
@@ -119,7 +108,6 @@ private:
 	// assist func
 	string normalizeReg(string reg);
 	string denormalizeReg(string reg, int bitWide);
-	string formatReg(string reg, int bitWide);
 	vector<string> parseCall(string callStr);
 	vector<string> parseString(string str);
 	Function_ parseFunctionDef(string str);

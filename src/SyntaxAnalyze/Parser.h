@@ -13,6 +13,7 @@
 #include <iomanip>
 #include <typeinfo>
 #include "../../include/json.hpp"
+#include <fstream>
 using json = nlohmann::json;
 using namespace std;
 // base enum type
@@ -36,6 +37,7 @@ struct Identifier
     std::string name;
 };
 
+struct ExprNode;
 // AST Node
 struct ASTNode
 {
@@ -51,7 +53,7 @@ struct Literal : ASTNode
 struct CallExpr : ASTNode
 {
     std::string functionName;
-    std::vector<string> arguments;
+    std::vector<ExprNode> arguments;
 };
 
 struct BinaryExpr

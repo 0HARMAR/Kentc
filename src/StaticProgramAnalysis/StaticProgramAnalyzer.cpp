@@ -49,7 +49,7 @@ void StaticProgramAnalyzer::allocateMemory(int id, int size, const string& name)
 
 int StaticProgramAnalyzer::calculateFinalMemory()
 {
-	const int alignment = 16;
+	const int alignment = 256;
 	total_size_aligned = (total_size + alignment - 1) / alignment * alignment;
 
 	for (size_t i = 0; i < memory_map.size(); ++i)
