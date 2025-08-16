@@ -24,7 +24,11 @@ void TargetGenerator::processCall(const vector<string>& tokens)
 	// inner functions
 	if (funcName == "print_int") {
 		handlePrintInt(tokens);
-	} else if (funcName == "exit") {
+	} else if (funcName == "print_hex")
+	{
+		handlePrintHex(tokens);
+	}
+	else if (funcName == "exit") {
 		handleExit(tokens);
 	} else if (funcName == "malloc") {
 	} else if (funcName == "free") {

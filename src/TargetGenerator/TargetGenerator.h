@@ -58,6 +58,7 @@ public:
 	vector<string> convertIRToASM(const vector<string>& irLines);
 	void handleDivision(const string& dividend, const string& divisor, string& result);
 	void handlePrintInt(vector<string>);
+	void handlePrintHex(vector<string>);
 	void handleExit(vector<string>);
 	void handleMallocAt(vector<string>);
 	void handleIn(vector<string>);

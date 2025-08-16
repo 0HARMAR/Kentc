@@ -15,6 +15,22 @@ void TargetGenerator::handlePrintInt(vector<string> tokens)
 	addAsmLine(CallingConvention::restoreCallerSave());
 }
 
+void TargetGenerator::handlePrintHex(vector<string> tokens)
+{
+	// first arg
+	string arg = tokens[4];
+
+	addAsmLine(CallingConvention::addCallerSave());
+	if (arg.find('%') != string::npos) // temp register
+	{
+		string reg = registerAllocator.getTempVarLocation(arg);
+		addAsmLine("	movl	" + denormalizeReg(reg, 32) + ", %edi");
+	}
+	addAsmLine("	call	" + tokens[0]);
+	addAsmLine(CallingConvention::restoreCallerSave());
+}
+
+
 void TargetGenerator::handlePrintString(vector<string> tokens)
 {
 	string stringAddressTempReg = tokens[4];

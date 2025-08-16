@@ -1,3 +1,5 @@
+#include <format>
+
 #include "../TargetGenerator.h"
 
 /**
@@ -50,7 +52,8 @@ void TargetGenerator::handleDivision(const string& dividend, const string& divis
 	string edxUser = registerAllocator.getVarInRegister(normalizeReg("%edx"));
 	if (!edxUser.empty())
 	{
-		registerAllocator.spillRegister(edxUser, "i32");
+		string newReg = registerAllocator.spillRegister(edxUser, "i32");
+		asmWriter.mov("%edx", formatReg(newReg, 32), "l");
 	}
 
 	// make sure divisor in register

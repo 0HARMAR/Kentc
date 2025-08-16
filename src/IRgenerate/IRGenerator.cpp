@@ -30,6 +30,7 @@ void IRGenerator::generateIR(const json &program, std::string &outputIR)
 {
 	// add LLVM header decl
 	outputIR += "declare void @print_int(i32)\n";
+	outputIR += "declare void @print_hex(i32)\n";
 	outputIR += "declare void @exit(i32)\n";
 
 	// for memory alloc
@@ -42,6 +43,11 @@ void IRGenerator::generateIR(const json &program, std::string &outputIR)
 
 	// for print string
 	outputIR += "declare void @print_string(i8*, i32)\n\n";
+
+	// for print "0x" prefix
+	outputIR = "@str" + std::to_string(index++) + " = constant [" + to_string(3)
+					+ " x i8] c\"" + "0x" + "\\00\"\n"
+					+ outputIR;
 
 	outputIR += "define i32 @main() {\n";
 
@@ -146,7 +152,17 @@ void IRGenerator::parseStatements(const json& program, std::string& outputIR)
 			if (stmt["target"]["type"] == "Identifier")
 			{
 				std::string varName = stmt["target"]["name"];
-				outputIR += "	call void @print_int(i32 %" + varName + ")\n";
+				std::string relativeAddrTempReg = "%t" + std::to_string((tempRegCount++));
+				outputIR += "	" + relativeAddrTempReg + " = sub i32 %" + varName + ", 6291456\n";
+
+				std::string stringTempReg = "%t" + std::to_string(tempRegCount++);
+				outputIR += "\t" + stringTempReg + " = getelementptr [" + to_string(3)
+				+ " x i8], [" + to_string(3) + " x i8]* @str" + to_string(0)
+				+", i32 0, i32, 0\n";
+				outputIR += "	call void @print_string(i8* " + stringTempReg
+				+ ", i32 " + to_string(3) + ")\n";
+
+				outputIR += "	call void @print_hex(i32 " + relativeAddrTempReg + ")\n";
 			}
 		}
 

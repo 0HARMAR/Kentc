@@ -42,6 +42,7 @@ int main(int argc, char* argv[])
 	}
 
     // 打开源文件
+	if (runMode == "DEV") srcPath = "../v1.0.kent";
     std::ifstream src(srcPath);
     if (!src) throw std::runtime_error("Could not open file " + srcPath);
     std::ostringstream buffer;

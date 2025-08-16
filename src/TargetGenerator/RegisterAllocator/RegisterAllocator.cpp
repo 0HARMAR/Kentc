@@ -26,7 +26,7 @@ string RegisterAllocator::allocReg(vector<string> exclude)
 	{
 		reg = "";
 	}
-	if (reg != "")freeRegs.pop_back();
+	if (reg != "")return reg;
 	return spillVar();
 }
 
