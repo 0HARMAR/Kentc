@@ -88,19 +88,29 @@ void IRGenerator::parseStatements(const json& program, std::string& outputIR)
 			// malloc and init
 			std::string varName = stmt["identifier"];
 			std::string varType = stmt["varType"];
-			variables.push_back(variable{varName, varType});
 			std::string typeSize;
 			if (varType == "int") typeSize = "32";
 			else if (varType == "byte") typeSize = "8";
 
-			std::string varAddr = std::to_string(stmt["address"].get<int>());
-			outputIR += "	%" + varName + " = call i" + typeSize + "* @malloc_at(i64 " + std::to_string(4) + ", i64 "
-			+ varAddr + ")\n";
-
 			std::string irExpr;
 			std::string value = generateExpr(stmt["initValue"],tempRegCount,irExpr);
 			outputIR += irExpr;
-			outputIR += "	store i" + typeSize + " " + value + ", i" + typeSize + "* %" + varName + "\n";
+
+			std::string varAddr = std::to_string(stmt["address"].get<int>());
+			if (varAddr == "-1") // local var
+			{
+				outputIR += "	%" + varName + ".addr = alloca i32\n";
+				outputIR += "	%" + varName + " = load i32, i32* %" + varName + ".addr\n";
+				functionVariables[currentFunction].push_back(variable{varName + ".addr", varType});
+				functionVariables[currentFunction].push_back(variable{varName, varType});
+				outputIR += "	store i" + typeSize + " " + value + ", i" + typeSize + "* %" + varName + ".addr \n";
+			} else
+			{
+				outputIR += "	%" + varName + " = call i" + typeSize + "* @malloc_at(i64 " + std::to_string(4) + ", i64 "
+				+ varAddr + ")\n";
+				functionVariables[currentFunction].push_back(variable{varName, varType});
+				outputIR += "	store i" + typeSize + " " + value + ", i" + typeSize + "* %" + varName + "\n";
+			}
 		}
 
 		else if (type == "Assignment")

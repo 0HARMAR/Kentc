@@ -39,6 +39,8 @@ std::string IRGenerator::generateExpr(const json &expr,
 			} else
 			if (var.name == varName) varType = var.type;
 		}
+		if (currentFunction != "main" and (varName.find(".addr" ) == string::npos))
+			varName = varName + ".addr";
 HERE:
 		std::string typeSize;
 		if (varType == "int") typeSize = "32";
@@ -56,8 +58,8 @@ HERE:
 		std::string resultReg = "%t" + std::to_string(tempRegCount++);
 
 		if (op == "+") ir += "	" + resultReg + " = add i32 " + left + ", " + right + "\n";
-		else if (op == "-") ir += "  " + resultReg + " = sub i32 " + left + ", " + right + "\n";
-		else if (op == "*") ir += "  " + resultReg + " = mul i32 " + left + ", " + right + "\n";
+		else if (op == "-") ir += "	" + resultReg + " = sub i32 " + left + ", " + right + "\n";
+		else if (op == "*") ir += "	" + resultReg + " = mul i32 " + left + ", " + right + "\n";
 		else if (op == "/") ir += "  " + resultReg + " = sdiv i32 " + left + ", " + right + "\n";
 
 		return resultReg;

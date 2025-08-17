@@ -26,7 +26,7 @@ json Parser::astToJson(const ASTNode* node)
 
 		j["varType"] = varType;
 		j["identifier"] = decl->identifier;
-		j["address"] = decl->address;
+		j["address"] = decl->address ? static_cast<long long>(decl->address) : -1;
 		if (decl->initValue)
 		{
 			j["initValue"] = astToJson(decl->initValue.get());

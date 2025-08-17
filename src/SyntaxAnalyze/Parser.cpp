@@ -53,7 +53,13 @@ std::unique_ptr<ProgramNode> Parser::parse()
             position_++;
             program->statements.push_back(parseAssignment());
         }
-        else if (match(TokenType::RIGHT_BRACE)) return program;
+        else if (match(TokenType::RIGHT_BRACE))
+        {
+            braceStack.pop();
+            // back to main
+            if (braceStack.empty()) currentFunction = "main";
+            return program;
+        }
         else
         {
             advance();
@@ -103,9 +109,15 @@ std::unique_ptr<DeclNode> Parser::parseDeclaration()
     consume(TokenType::EQUAL, "Expected '=' after identifier");
     decl->initValue = parseExpression();
 
-    consume(TokenType::AT, "Expected 'at' keyword");
-    uintptr_t addr = stoi(consume(TokenType::HEXADDRESS, "Expected address").lexeme.substr(2, 3));
-    decl->address = addr;
+    if (currentFunction == "main")
+    {
+        consume(TokenType::AT, "Expected 'at' keyword");
+        uintptr_t addr = stoi(consume(TokenType::HEXADDRESS, "Expected address").lexeme.substr(2, 3));
+        decl->address = addr;
+    } else
+    {
+        decl -> address = reinterpret_cast<uintptr_t>(nullptr);
+    }
 
     return decl;
 }
@@ -182,6 +194,8 @@ std::unique_ptr<MovNode> Parser::parseMov()
 std::unique_ptr<SelectorNode> Parser::parseSelector()
 {
     auto conditionalExpr = parseConditionalExpression();
+    consume(TokenType::LEFT_BRACE, "expect { on selector");
+    braceStack.push('{');
     auto conditionalBody = parse();
     std::unique_ptr<SelectorNode> selector = std::make_unique<SelectorNode>();
     selector->conditionalExpr = std::move(conditionalExpr);
@@ -216,7 +230,7 @@ std::unique_ptr<LooperNode> Parser::parseLooper()
             continue;
         }
     }
-    else if (token.type == TokenType::LEFT_BRACE);
+    else if (token.type == TokenType::LEFT_BRACE) braceStack.push('{');
 
     auto looperNode = std::make_unique<LooperNode>();
     looperNode->looperTimes = stoi(looperTimes);
@@ -244,6 +258,8 @@ std::unique_ptr<FunctionNode> Parser::parseFunction()
     consume(TokenType::RETURNARROW, "expect -> after arguments");
     std::string returnType = consume().lexeme;
     consume(TokenType::LEFT_BRACE, "expect { after return type");
+    braceStack.push('{');
+    currentFunction = functionName;
     function->functionName = functionName;
     function->arguments = arguments;
     function->returnType = returnType;
@@ -270,6 +286,7 @@ std::unique_ptr<ExprNode> Parser::parseConditionalExpression()
     consume(TokenType::EQUALITY, "expect '==' in selector operation");
     equalityExpr->rhs = parseExpression();
     conditionalExpr->content = *equalityExpr;
+    consume(TokenType::RIGHT_PAREN, "expect ')' after conditional expression");
     return conditionalExpr;
 }
 

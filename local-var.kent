@@ -1,0 +1,20 @@
+set int num1 = 10 at 0x100
+set int num2 = 20 at 0x104
+
+function fact (int num) -> int {
+    selector(num == 1) {
+        return 1
+    }
+
+    return num * fact(num - 1)
+}
+
+function calculate (int a, int b) -> int{
+    set int part1 = a * b + 1
+    set int part2 = fact(5)
+    set int result = part1 + part2
+    return result
+}
+
+set int result = calculate(num1, num2) at 0x108
+print "result is " + result

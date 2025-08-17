@@ -78,7 +78,7 @@ string TargetGenerator::processBinaryOp(const vector<string>& tokens)
 			asmWriter.pop(spilledTransitReg);
 			return "";
 		}
-		addAsmLine("	" + opMap[op] + "	" + src2 + ", " + denormalizeReg(resultReg, 32));
+		addAsmLine("\t" + opMap[op] + "	" + src2 + ", " + denormalizeReg(resultReg, 32));
 	}
 
 	return "";

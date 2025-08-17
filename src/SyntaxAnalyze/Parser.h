@@ -14,6 +14,7 @@
 #include <typeinfo>
 #include "../../include/json.hpp"
 #include <fstream>
+#include <stack>
 using json = nlohmann::json;
 using namespace std;
 // base enum type
@@ -179,6 +180,8 @@ private:
     void printAddress(uintptr_t addr);
     const std::vector<Token>& tokens_;
     size_t position_;
+    string currentFunction = "main";
+    stack<char> braceStack;
 };
 
 
