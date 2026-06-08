@@ -155,7 +155,7 @@ print "b is " + b
 
 ---
 
-## ⚙️ 构建与运行 / Build & Run (Linux + CMake)
+## ⚙️ 构建与运行 / Build & Run (Linux)
 
 ### 🛠️ 步骤 / Steps
 
@@ -164,11 +164,8 @@ print "b is " + b
 git clone https://github.com/0HARMAR/kentc.git
 cd kentc
 
-# 2. 创建构建目录 / Create build directory
-mkdir build && cd build
-
-# 3. 使用 CMake 配置项目 / Configure project with CMake
-cmake ..
+# 2. 构建并安装到 ~/.local/bin / Build and install
+./build.sh
 
 ./kentc -v
 ```
@@ -176,7 +173,7 @@ cmake ..
 ### 🚀 编译 Kent 程序 / Compile Kent programs
 
 ```bash
-./kentc demo.kent -o demo
+kentc demo.kent -o demo
 ./demo
 ```
 
