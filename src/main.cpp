@@ -2,10 +2,11 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <filesystem>
 
 #include "LexerAnalyze/Lexer.hpp"
 #include "SyntaxAnalyze/Parser.h"
-#include "IRGenerate/IRGenerator.h"
+#include "IRgenerate/IRGenerator.h"
 
 #include "TargetGenerator/TargetGenerator.h"
 #include "ExecutableGenerator/ExecutableGenerator.h"
@@ -129,7 +130,10 @@ int main(int argc, char* argv[])
 	}
 	else
 	{
-		ExecutableGenerator executableGenerator(srcPath.substr(0, srcPath.length() - 5), "./");
+		std::string srcDir = filesystem::path(srcPath).parent_path().string();
+		std::string outName = outputPath.empty() ? filesystem::path(srcPath).stem().string() : outputPath;
+		if (srcDir.empty()) srcDir = ".";
+		ExecutableGenerator executableGenerator(outName, srcDir + "/");
 		executableGenerator.generateExecutable(ASM);
 	}
     return 0;

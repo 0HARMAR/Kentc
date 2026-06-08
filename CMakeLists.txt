@@ -6,8 +6,8 @@ set(CMAKE_BUILD_TYPE Debug)
 
 add_executable(kentc src/main.cpp
         src/LexerAnalyze/Lexer.cpp
-        src/SyntaxAnalyze/parser.cpp
-        src/SyntaxAnalyze/parser.h
+        src/SyntaxAnalyze/Parser.cpp
+        src/SyntaxAnalyze/Parser.h
         include/Token.h
         include/TokenType.h
         src/SyntaxAnalyze/AstToJson.cpp

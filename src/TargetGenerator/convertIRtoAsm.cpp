@@ -269,7 +269,7 @@ vector<string> TargetGenerator::convertIRToASM(const vector<string>& irLines)
 	addAsmLine("	.section	.note.GNU-stack,\"\",@progbits");
 
 	// write register alloca history
-	string path = R"(/mnt/c/Users/hemin/kentc/ELFBUILD/SSAs.map)";
+	string path = "SSAs.map";
 	ofstream file(path);
 	if (file.is_open())
 	{

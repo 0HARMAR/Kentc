@@ -19,7 +19,7 @@ public:
 
 	void generateExecutable(const string& asmCode,
 		const vector<string>& linkLibs = {"print_int.o", "exit.o", "memoryAllocator.o",
-		"in.o", "print_string.o", "print_hex.o"});
+		"in.o", "print_string.o"});
 
 private:
 	const string buildRoot;
