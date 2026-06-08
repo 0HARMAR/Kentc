@@ -191,15 +191,5 @@ json Parser::astToJson(const ASTNode* node)
 		j["type"] = "Unknown";
 	}
 
-	if (runMode == "DEV")
-	{
-		std::ofstream file(R"(/mnt/c/Users/hemin/kentc/ELFBUILD/syntax.json)");
-		if (file.is_open())
-		{
-			file << j.dump(4) << std::endl;
-			file.close();
-		}
-	}
-
 	return j;
 }

@@ -1,45 +1,38 @@
-//
-// Created by hemin on 25-7-15.
-//
-
 #ifndef IRGENERATOR_H
 #define IRGENERATOR_H
 #include "../../include/json.hpp"
+#include "IRWriter.h"
 #include <map>
 #include <set>
-#include <fstream>
-#include <iostream>
 
 using json = nlohmann::json;
 using namespace std;
+
 struct variable
 {
-	std::string name;
-	std::string type;
+    std::string name;
+    std::string type;
 };
 
 class IRGenerator {
 public:
-	IRGenerator();
-	void generateIR(const json &program, std::string &outputIR);
+    IRGenerator();
+    void generateIR(const json &program, std::string &outputIR);
 
 private:
-	std::string generateExpr(const json &expr,int &tempRegCount, std::string &ir);
-	// func name -> variables
-	std::map<string, vector<variable>> functionVariables;
-	// func name -> arguments
-	map<string, vector<variable>> functionArguments;
-	std::vector<variable>& variables = functionVariables["main"];
-	void parseStatements(const json &statement, std::string &outputIR);
-	string getVarTypeByName(string name);
+    IRWriter irWriter;
+    std::string generateExpr(const json &expr);
+    std::map<string, vector<variable>> functionVariables;
+    std::map<string, vector<variable>> functionArguments;
+    std::vector<variable>& variables = functionVariables["main"];
+    void parseStatements(const json &statement);
+    string getVarTypeByName(string name);
+    string currentFunction = "main";
+    int looperLabelNum = 0;
 
-	int index = 0;
-
-	map<string,string> typeToIRtype = {
-		{"int", "i32"}
-	};
+    map<string,string> typeToIRtype = {
+        {"int", "i32"}
+    };
 };
 
-
-
-#endif //IRGENERATOR_H
+#endif

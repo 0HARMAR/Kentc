@@ -135,20 +135,6 @@ std::vector<Token> Lexer::tokenize()
     }
     tokens.push_back(Token(TokenType::END, "eof"));
 
-    if (runMode == "DEV")
-    {
-        std::ofstream file(R"(/mnt/c/Users/hemin/kentc/ELFBUILD/lexer.output)");
-        if (file.is_open())
-        {
-            for (const auto& token : tokens)
-            {
-                file << "Token: " << token.lexeme
-                      << ", Type: " << tokenTypeToString(token.type) << std::endl;
-            }
-            file.close();
-        }
-    }
-
     return tokens;
 }
 

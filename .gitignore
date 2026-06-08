@@ -3,3 +3,5 @@ cmake-build-debug
 ELFBUILD
 Test
 build
+products
+tests

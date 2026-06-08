@@ -56,6 +56,7 @@ add_executable(kentc src/main.cpp
         src/TargetGenerator/ProcessIRLine/processDefine.cpp
         src/TargetGenerator/ProcessIRLine/processCall.cpp
         src/TargetGenerator/ProcessIRLine/processBinaryOp.cpp
+        src/IRgenerate/IRWriter.cpp
         src/IRgenerate/generateExpr.cpp
         src/TargetGenerator/include/utils.h
         src/TargetGenerator/include/utils.cpp

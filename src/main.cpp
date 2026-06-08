@@ -14,6 +14,13 @@
 #include "CompileOptimise/AssemblyParser.h"
 
 string runMode = "PROD";
+
+static void writeFile(const string& path, const string& content)
+{
+	ofstream file(path);
+	if (file.is_open()) { file << content; file.close(); }
+}
+
 int main(int argc, char* argv[])
 {
 	string srcPath;
@@ -42,7 +49,11 @@ int main(int argc, char* argv[])
 
 	}
 
-    // 打开源文件
+	string srcDir = filesystem::path(srcPath).parent_path().string();
+	if (srcDir.empty()) srcDir = ".";
+	string stem = filesystem::path(srcPath).stem().string();
+	string prefix = srcDir + "/products/" + stem;
+
 	if (runMode == "DEV") srcPath = "../local-var.kent";
     std::ifstream src(srcPath);
     if (!src) throw std::runtime_error("Could not open file " + srcPath);
@@ -55,7 +66,6 @@ int main(int argc, char* argv[])
 
     std::vector<Token> tokens = lexer.tokenize();
 
-    // output tokens
     if (runMode == "DEV") {
     	std::cout << "\033[31mLexer analyze:\033[0m\n";
     	for (const Token& token : tokens)
@@ -65,6 +75,13 @@ int main(int argc, char* argv[])
     		}
 		std::cout << std::endl;
     }
+
+	{
+		ostringstream oss;
+		for (const Token& token : tokens)
+			oss << "Token: " << token.lexeme << ", Type: " << lexer.tokenTypeToString(token.type) << '\n';
+		writeFile(prefix + ".tokens.txt", oss.str());
+	}
 
 	// parser analyze
 
@@ -77,19 +94,22 @@ int main(int argc, char* argv[])
     	std::cout << ast_json.dump(2) << std::endl;
     }
 
+	writeFile(prefix + ".ast.json", ast_json.dump(2));
+
 	// IR generate
 	IRGenerator irGenerator;
 	std::string IR;
-	irGenerator.generateIR(ast_json,IR);
+	irGenerator.generateIR(ast_json, IR);
 	if (runMode == "DEV")
 	{
 		std::cout << "\033[33mIR generate:\033[0m\n";
 		std::cout << IR << std::endl;
 	}
 
+	writeFile(prefix + ".ir", IR);
+
 	// ASM generate
 	TargetGenerator targetGenerator;
-	// convert IR string to IR lines
 	std::vector<string> IRLines;
 	std::string IRLine;
 	std::istringstream iss(IR);
@@ -107,16 +127,14 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	// optimize
-	// AssemblyParser assemblyParser;
-	// Function main = assemblyParser.parse(ASMLines);
-	// Optimizer optimizer(main);
-	// Function mainOptimized = optimizer.optimize();
-	// mainOptimized.print();
-	// std::cout << std::endl;
+	{
+		ostringstream oss;
+		for (const string& line : ASMLines)
+			oss << line << '\n';
+		writeFile(prefix + ".s", oss.str());
+	}
 
 	// Executable generate
-	// convert ASM lines to ASM string
 	std::string ASM;
 	for (const string& line : ASMLines)
 	{
@@ -130,9 +148,7 @@ int main(int argc, char* argv[])
 	}
 	else
 	{
-		std::string srcDir = filesystem::path(srcPath).parent_path().string();
-		std::string outName = outputPath.empty() ? filesystem::path(srcPath).stem().string() : outputPath;
-		if (srcDir.empty()) srcDir = ".";
+		std::string outName = outputPath.empty() ? stem : outputPath;
 		ExecutableGenerator executableGenerator(outName, srcDir + "/");
 		executableGenerator.generateExecutable(ASM);
 	}
